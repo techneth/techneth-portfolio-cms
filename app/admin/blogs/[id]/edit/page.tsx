@@ -10,11 +10,13 @@ import { getBlog, updateBlog, deleteBlog, BlogFormData } from '../../actions';
 import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+    const { id } = use(params); // Original line, keeping it as it's correct for RSC context. The user's diff had `const params = useParams();` which is for client components. This component is already marked 'use client' and `use(params)` is correct for accessing the resolved promise value.
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { addImage, uploadImages } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<BlogFormData>({
@@ -116,8 +118,16 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
 
             toast.loading('Saving changes...', { id: toastId });
 
+            // Process content images
+            const processedContent = await uploadImages(
+                formData.content,
+                'blogs',
+                `blogs/${formData.slug || id}/content`
+            );
+
             await updateBlog(id, {
                 ...formData,
+                content: processedContent,
                 featured_image: imageUrl,
                 status
             });
@@ -263,6 +273,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                     <MarkdownEditor
                         value={formData.content}
                         onChange={(value) => setFormData({ ...formData, content: value })}
+                        onImageSelect={addImage}
                     />
                 </div>
 

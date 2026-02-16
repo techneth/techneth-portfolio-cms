@@ -10,11 +10,14 @@ import { getCaseStudy, updateCaseStudy, deleteCaseStudy, CaseStudyFormData } fro
 import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 
-export default function EditCaseStudyPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function EditCaseStudyPage() {
+    const params = useParams();
+    const caseStudyId = params.id as string;
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { addImage, uploadImages } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<CaseStudyFormData>({
@@ -35,12 +38,14 @@ export default function EditCaseStudyPage({ params }: { params: Promise<{ id: st
     const [techInput, setTechInput] = useState('');
 
     useEffect(() => {
-        loadCaseStudy();
-    }, [id]);
+        if (caseStudyId) {
+            loadCaseStudy();
+        }
+    }, [caseStudyId]);
 
     const loadCaseStudy = async () => {
         try {
-            const data = await getCaseStudy(id);
+            const data = await getCaseStudy(caseStudyId);
             setFormData({
                 title: data.title,
                 slug: data.slug,
@@ -120,8 +125,16 @@ export default function EditCaseStudyPage({ params }: { params: Promise<{ id: st
 
             toast.loading('Saving changes...', { id: toastId });
 
-            await updateCaseStudy(id, {
+            // Process content images
+            const processedContent = await uploadImages(
+                formData.content,
+                'case_studies',
+                `case-studies/${formData.slug || caseStudyId}/content`
+            );
+
+            await updateCaseStudy(caseStudyId, {
                 ...formData,
+                content: processedContent,
                 featured_image: imageUrl,
                 status
             });
@@ -301,9 +314,10 @@ export default function EditCaseStudyPage({ params }: { params: Promise<{ id: st
                     <MarkdownEditor
                         value={formData.content}
                         onChange={(value) => setFormData({ ...formData, content: value })}
+                        placeholder="Describe the challenge, solution, and results..."
+                        onImageSelect={addImage}
                     />
                 </div>
-
                 {/* Technologies */}
                 <div className="admin-card p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Technologies Used</h3>

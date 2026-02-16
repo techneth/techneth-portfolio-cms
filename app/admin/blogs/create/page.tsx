@@ -10,10 +10,12 @@ import { createBlog, BlogFormData } from '../actions';
 import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 
 export default function CreateBlogPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { addImage, uploadImages } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<BlogFormData>({
         title: '',
@@ -95,8 +97,16 @@ export default function CreateBlogPage() {
 
             toast.loading('Saving blog post...', { id: toastId });
 
+            // Process content images just before saving
+            const processedContent = await uploadImages(
+                formData.content,
+                'blogs',
+                `blogs/${formData.slug || 'uncategorized'}/content`
+            );
+
             await createBlog({
                 ...formData,
+                content: processedContent,
                 featured_image: imageUrl,
                 status
             });
@@ -210,6 +220,7 @@ export default function CreateBlogPage() {
                     <MarkdownEditor
                         value={formData.content}
                         onChange={(value) => setFormData({ ...formData, content: value })}
+                        onImageSelect={addImage}
                     />
                 </div>
 

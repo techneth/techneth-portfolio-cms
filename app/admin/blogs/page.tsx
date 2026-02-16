@@ -48,7 +48,7 @@ export default function BlogsPage() {
             const data = await getBlogs({
                 status: statusFilter || undefined,
                 search: searchQuery || undefined,
-                deleted: (viewFilter === 'trash' ? 'only' : 'exclude') as any,
+                deleted: viewFilter === 'trash',
             });
             setBlogs(data);
         } catch (error) {

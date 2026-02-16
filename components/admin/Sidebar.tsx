@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
@@ -110,13 +111,14 @@ export default function Sidebar({ user }: SidebarProps) {
                     {/* Logo */}
                     <div className="p-6 pt-20 lg:pt-6 border-b border-white/10">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-[#00A99D] rounded flex items-center justify-center">
-                                <span className="text-white font-bold text-xl">T</span>
-                            </div>
-                            <div>
-                                <h1 className="text-white font-bold text-lg">Techneth</h1>
-                                <p className="text-white/70 text-xs">Admin Panel</p>
-                            </div>
+                            <Image
+                                src="/logo.png"
+                                alt="Techneth Logo"
+                                width={160}
+                                height={45}
+                                className="object-contain h-10 w-auto"
+                                priority
+                            />
                         </div>
                     </div>
 

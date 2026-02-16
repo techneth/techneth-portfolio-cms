@@ -10,10 +10,12 @@ import { createCaseStudy, CaseStudyFormData } from '../actions';
 import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { addImage, uploadImages } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<CaseStudyFormData>({
         title: '',
@@ -99,8 +101,16 @@ export default function CreateCaseStudyPage() {
 
             toast.loading('Saving case study...', { id: toastId });
 
+            // Process content images
+            const processedContent = await uploadImages(
+                formData.content,
+                'case_studies',
+                `case-studies/${formData.slug || 'uncategorized'}/content`
+            );
+
             await createCaseStudy({
                 ...formData,
+                content: processedContent,
                 featured_image: imageUrl,
                 status
             });
@@ -248,9 +258,10 @@ export default function CreateCaseStudyPage() {
                     <MarkdownEditor
                         value={formData.content}
                         onChange={(value) => setFormData({ ...formData, content: value })}
+                        placeholder="Describe the challenge, solution, and results..."
+                        onImageSelect={addImage}
                     />
                 </div>
-
                 {/* Technologies */}
                 <div className="admin-card p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Technologies Used</h3>
