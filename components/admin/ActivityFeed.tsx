@@ -17,9 +17,9 @@ interface ActivityFeedProps {
 
 const actionColors: Record<string, string> = {
     create: '#28A745',
-    update: '#17A2B8',
+    update: '#00A99D',
     delete: '#DC3545',
-    login: '#4AB3A5',
+    login: '#00A99D',
     logout: '#6C757D',
 };
 

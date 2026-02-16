@@ -93,7 +93,8 @@ export default function Sidebar({ user }: SidebarProps) {
             {/* Mobile Menu Toggle */}
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded bg-[#2C3E50] text-white"
+                className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded bg-[#1E3A8A] text-white shadow-lg"
+                aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -107,9 +108,9 @@ export default function Sidebar({ user }: SidebarProps) {
             >
                 <div className="flex flex-col h-full">
                     {/* Logo */}
-                    <div className="p-6 border-b border-white/10">
+                    <div className="p-6 pt-20 lg:pt-6 border-b border-white/10">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-[#4AB3A5] rounded flex items-center justify-center">
+                            <div className="w-10 h-10 bg-[#00A99D] rounded flex items-center justify-center">
                                 <span className="text-white font-bold text-xl">T</span>
                             </div>
                             <div>
@@ -134,7 +135,7 @@ export default function Sidebar({ user }: SidebarProps) {
                                             className={`
                         flex items-center space-x-3 px-4 py-3 rounded transition-colors
                         ${isActive
-                                                    ? 'bg-[#4AB3A5] text-white'
+                                                    ? 'bg-[#00A99D] text-white'
                                                     : 'text-white/80 hover:bg-white/10'
                                                 }
                       `}
@@ -151,7 +152,7 @@ export default function Sidebar({ user }: SidebarProps) {
                     {/* User Profile */}
                     <div className="p-6 border-t border-white/10">
                         <div className="flex items-center space-x-3 mb-4">
-                            <div className="w-10 h-10 bg-[#4AB3A5] rounded-full flex items-center justify-center text-white font-semibold">
+                            <div className="w-10 h-10 bg-[#00A99D] rounded-full flex items-center justify-center text-white font-semibold">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">

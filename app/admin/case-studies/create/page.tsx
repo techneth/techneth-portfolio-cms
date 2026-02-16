@@ -143,7 +143,7 @@ export default function CreateCaseStudyPage() {
                     <button
                         onClick={(e) => handleSubmit(e, 'published')}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 bg-[#17A2B8] text-white rounded hover:bg-[#138496] transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors disabled:opacity-50"
                     >
                         <Eye size={18} />
                         <span>Publish</span>
@@ -165,7 +165,7 @@ export default function CreateCaseStudyPage() {
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => handleTitleChange(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 required
                             />
                         </div>
@@ -177,7 +177,7 @@ export default function CreateCaseStudyPage() {
                                 type="text"
                                 value={formData.slug}
                                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 required
                             />
                         </div>
@@ -190,7 +190,7 @@ export default function CreateCaseStudyPage() {
                                     type="text"
                                     value={formData.client_name}
                                     onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 />
                             </div>
                             <div>
@@ -201,7 +201,7 @@ export default function CreateCaseStudyPage() {
                                     type="text"
                                     value={formData.industry}
                                     onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 />
                             </div>
                         </div>
@@ -213,7 +213,7 @@ export default function CreateCaseStudyPage() {
                                 value={formData.excerpt}
                                 onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                             />
                         </div>
 
@@ -233,7 +233,7 @@ export default function CreateCaseStudyPage() {
                                 id="is_featured"
                                 checked={formData.is_featured}
                                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                                className="w-4 h-4 text-[#17A2B8] border-gray-300 rounded focus:ring-[#17A2B8]"
+                                className="w-4 h-4 text-[#00A99D] border-gray-300 rounded focus:ring-[#00A99D]"
                             />
                             <label htmlFor="is_featured" className="text-sm font-medium text-gray-700">
                                 Featured Case Study
@@ -261,13 +261,13 @@ export default function CreateCaseStudyPage() {
                                 value={techInput}
                                 onChange={(e) => setTechInput(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTechnology())}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="e.g., React, Node.js, PostgreSQL"
                             />
                             <button
                                 type="button"
                                 onClick={addTechnology}
-                                className="px-4 py-2 bg-[#17A2B8] text-white rounded hover:bg-[#138496] transition-colors"
+                                className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                             >
                                 Add
                             </button>
@@ -276,7 +276,7 @@ export default function CreateCaseStudyPage() {
                             {formData.technologies.map((tech) => (
                                 <span
                                     key={tech}
-                                    className="inline-flex items-center px-3 py-1 bg-[#17A2B8] text-white rounded-full text-sm"
+                                    className="inline-flex items-center px-3 py-1 bg-[#00A99D] text-white rounded-full text-sm"
                                 >
                                     {tech}
                                     <button
@@ -304,7 +304,7 @@ export default function CreateCaseStudyPage() {
                                 type="text"
                                 value={formData.seo_title}
                                 onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Leave empty to use the case study title"
                             />
                         </div>
@@ -316,7 +316,7 @@ export default function CreateCaseStudyPage() {
                                 value={formData.seo_description}
                                 onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#17A2B8]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Leave empty to use the excerpt"
                             />
                         </div>

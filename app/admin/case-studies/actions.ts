@@ -111,6 +111,7 @@ export async function deleteCaseStudy(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
+    // Get case study for ownership check
     const { data: caseStudy } = await supabase
         .from('case_studies')
         .select('*')
@@ -122,6 +123,64 @@ export async function deleteCaseStudy(id: string) {
     if (!canPerformAction(user, 'delete', 'case_study', caseStudy.created_by)) {
         throw new Error('Forbidden');
     }
+
+    // Soft delete
+    const { error } = await supabase
+        .from('case_studies')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'delete',
+        resourceType: 'case_study',
+        resourceId: id,
+        resourceTitle: caseStudy.title,
+        changes: { deleted_at: { before: null, after: 'now' } }
+    });
+
+    revalidatePath('/admin/case-studies');
+}
+
+export async function restoreCaseStudy(id: string) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { data, error } = await supabase
+        .from('case_studies')
+        .update({ deleted_at: null })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'update',
+        resourceType: 'case_study',
+        resourceId: id,
+        resourceTitle: data.title,
+        changes: { deleted_at: { before: 'timestamp', after: null } }
+    });
+
+    revalidatePath('/admin/case-studies');
+    return data;
+}
+
+export async function permanentlyDeleteCaseStudy(id: string) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
 
     const { error } = await supabase
         .from('case_studies')
@@ -137,13 +196,17 @@ export async function deleteCaseStudy(id: string) {
         actionType: 'delete',
         resourceType: 'case_study',
         resourceId: id,
-        resourceTitle: caseStudy.title,
+        resourceTitle: 'Permanently Deleted Case Study',
     });
 
     revalidatePath('/admin/case-studies');
 }
 
-export async function getCaseStudies() {
+export async function getCaseStudies(filters?: {
+    status?: string;
+    search?: string;
+    deleted?: boolean;
+}) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
 
@@ -154,6 +217,26 @@ export async function getCaseStudies() {
         .select('*')
         .order('created_at', { ascending: false });
 
+    // Handle deleted items filter
+    if (filters?.deleted) {
+        if (user.role !== 'super_admin') {
+            return []; // Only super admins can see deleted items
+        }
+        query = query.not('deleted_at', 'is', null);
+    } else {
+        // Default behavior: show only non-deleted items
+        query = query.is('deleted_at', null);
+    }
+
+    if (filters?.status) {
+        query = query.eq('status', filters.status);
+    }
+
+    if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
+    }
+
+    // Editors can only see their own case studies
     if (user.role === 'editor') {
         query = query.eq('created_by', user.id);
     }

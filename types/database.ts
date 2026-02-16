@@ -63,6 +63,7 @@ export interface Database {
                     updated_at: string
                     created_by: string | null
                     updated_by: string | null
+                    deleted_at: string | null
                 }
                 Insert: {
                     id?: string

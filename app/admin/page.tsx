@@ -19,7 +19,7 @@ export default async function AdminDashboard() {
                     title="Published Blogs"
                     value={0}
                     icon={<FileText size={24} />}
-                    color="#4AB3A5"
+                    color="#00A99D"
                 />
                 <StatCard
                     title="Draft Blogs"
@@ -31,7 +31,7 @@ export default async function AdminDashboard() {
                     title="Case Studies"
                     value={0}
                     icon={<Briefcase size={24} />}
-                    color="#17A2B8"
+                    color="#00A99D"
                 />
                 <StatCard
                     title="Unread Contacts"
@@ -47,16 +47,16 @@ export default async function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Link
                         href="/admin/blogs/create"
-                        className="p-4 border-2 border-[#4AB3A5] rounded hover:bg-[#4AB3A5] hover:text-white transition-colors text-center group"
+                        className="p-4 border-2 border-[#00A99D] rounded hover:bg-[#00A99D] hover:text-white transition-colors text-center group"
                     >
-                        <FileText className="mx-auto mb-2 text-[#4AB3A5] group-hover:text-white" size={32} />
+                        <FileText className="mx-auto mb-2 text-[#00A99D] group-hover:text-white" size={32} />
                         <span className="font-medium">Create New Blog</span>
                     </Link>
                     <Link
                         href="/admin/case-studies/create"
-                        className="p-4 border-2 border-[#17A2B8] rounded hover:bg-[#17A2B8] hover:text-white transition-colors text-center group"
+                        className="p-4 border-2 border-[#00A99D] rounded hover:bg-[#00A99D] hover:text-white transition-colors text-center group"
                     >
-                        <Briefcase className="mx-auto mb-2 text-[#17A2B8] group-hover:text-white" size={32} />
+                        <Briefcase className="mx-auto mb-2 text-[#00A99D] group-hover:text-white" size={32} />
                         <span className="font-medium">Create Case Study</span>
                     </Link>
                     <Link

@@ -3,24 +3,44 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Eye, Search, AlertTriangle } from 'lucide-react';
-import { getBlogs, deleteBlog } from './actions';
+import { Plus, Edit, Trash2, Eye, Search, AlertTriangle, RotateCcw, Trash } from 'lucide-react';
+import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
+import { createClient } from '@/lib/supabase/client';
 
 export default function BlogsPage() {
     const [blogs, setBlogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewFilter, setViewFilter] = useState<'active' | 'trash'>('active');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [blogToDelete, setBlogToDelete] = useState<{ id: string; title: string } | null>(null);
+    const [deleteMode, setDeleteMode] = useState<'soft' | 'permanent'>('soft');
+    const [userRole, setUserRole] = useState<string>('');
     const router = useRouter();
 
     useEffect(() => {
+        const fetchUser = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+                setUserRole((userData as any)?.role || '');
+            }
+        };
+        fetchUser();
+    }, []);
+
+    useEffect(() => {
         loadBlogs();
-    }, [statusFilter, searchQuery]);
+    }, [statusFilter, searchQuery, viewFilter]);
 
     const loadBlogs = async () => {
         setLoading(true);
@@ -28,6 +48,7 @@ export default function BlogsPage() {
             const data = await getBlogs({
                 status: statusFilter || undefined,
                 search: searchQuery || undefined,
+                deleted: (viewFilter === 'trash' ? 'only' : 'exclude') as any,
             });
             setBlogs(data);
         } catch (error) {
@@ -40,18 +61,44 @@ export default function BlogsPage() {
 
     const handleDeleteClick = (id: string, title: string) => {
         setBlogToDelete({ id, title });
+        setDeleteMode('soft');
         setIsDeleteModalOpen(true);
+    };
+
+    const handlePermanentDeleteClick = (id: string, title: string) => {
+        setBlogToDelete({ id, title });
+        setDeleteMode('permanent');
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleRestore = async (id: string, title: string) => {
+        if (!confirm(`Restore "${title}"?`)) return;
+
+        try {
+            await restoreBlog(id);
+            toast.success('Blog restored successfully');
+            loadBlogs();
+        } catch (error) {
+            toast.error('Failed to restore blog');
+        }
     };
 
     const confirmDelete = async () => {
         if (!blogToDelete) return;
 
-        const toastId = toast.loading('Deleting blog...');
+        const toastId = toast.loading(
+            deleteMode === 'permanent' ? 'Permanently deleting blog...' : 'Moving to trash...'
+        );
         setIsDeleteModalOpen(false);
 
         try {
-            await deleteBlog(blogToDelete.id);
-            toast.success('Blog deleted successfully', { id: toastId });
+            if (deleteMode === 'permanent') {
+                await permanentlyDeleteBlog(blogToDelete.id);
+                toast.success('Blog permanently deleted', { id: toastId });
+            } else {
+                await deleteBlog(blogToDelete.id);
+                toast.success('Blog moved to trash', { id: toastId });
+            }
             loadBlogs();
         } catch (error) {
             console.error('Error deleting blog:', error);
@@ -64,18 +111,41 @@ export default function BlogsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Blogs</h1>
-                    <p className="text-gray-600 mt-2">Manage your blog posts</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Blogs</h1>
+                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your blog posts</p>
                 </div>
                 <Link
                     href="/admin/blogs/create"
-                    className="flex items-center space-x-2 px-4 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors"
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors whitespace-nowrap"
                 >
                     <Plus size={20} />
                     <span>Create New Blog</span>
                 </Link>
+            </div>
+
+            {/* View Toggle Tabs */}
+            <div className="flex space-x-2">
+                <button
+                    onClick={() => setViewFilter('active')}
+                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active'
+                        ? 'bg-[#00A99D] text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                >
+                    Active Blogs
+                </button>
+                <button
+                    onClick={() => setViewFilter('trash')}
+                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash'
+                        ? 'bg-[#DC3545] text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                >
+                    <Trash size={16} />
+                    <span>Trash</span>
+                </button>
             </div>
 
             {/* Filters */}
@@ -113,7 +183,7 @@ export default function BlogsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[640px]">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -153,18 +223,39 @@ export default function BlogsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-3">
-                                                <Link
-                                                    href={`/admin/blogs/${blog.id}/edit`}
-                                                    className="text-[#4AB3A5] hover:text-[#3A9A8D]"
-                                                >
-                                                    <Edit size={18} />
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleDeleteClick(blog.id, blog.title)}
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                {viewFilter === 'active' ? (
+                                                    <>
+                                                        <Link
+                                                            href={`/admin/blogs/${blog.id}/edit`}
+                                                            className="text-[#00A99D] hover:text-[#008F84]"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(blog.id, blog.title)}
+                                                            className="text-red-600 hover:text-red-800"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleRestore(blog.id, blog.title)}
+                                                            className="text-[#00A99D] hover:text-[#008F84]"
+                                                            title="Restore"
+                                                        >
+                                                            <RotateCcw size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handlePermanentDeleteClick(blog.id, blog.title)}
+                                                            className="text-red-600 hover:text-red-800"
+                                                            title="Permanently Delete"
+                                                        >
+                                                            <Trash size={18} />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -179,17 +270,21 @@ export default function BlogsPage() {
             <Modal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
-                title="Confirm Deletion"
+                title={deleteMode === 'permanent' ? 'Permanently Delete Blog?' : 'Move Blog to Trash?'}
             >
                 <div className="space-y-4">
-                    <div className="flex items-center text-amber-600 bg-amber-50 p-3 rounded-md">
-                        <AlertTriangle className="mr-3 flex-shrink-0" size={24} />
-                        <p className="text-sm">
-                            Warning: This action cannot be undone.
+                    <div className="flex items-center p-3 rounded-md" style={{ backgroundColor: deleteMode === 'permanent' ? '#fee' : '#fef3c7' }}>
+                        <AlertTriangle className="mr-3 flex-shrink-0" style={{ color: deleteMode === 'permanent' ? '#DC3545' : '#f59e0b' }} size={24} />
+                        <p className="text-sm" style={{ color: deleteMode === 'permanent' ? '#991b1b' : '#92400e' }}>
+                            {deleteMode === 'permanent' ? 'Warning: This action cannot be undone!' : 'This item will be moved to trash.'}
                         </p>
                     </div>
                     <p className="text-gray-600">
-                        Are you sure you want to delete the blog post <span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span>?
+                        {deleteMode === 'permanent' ? (
+                            <>Permanently delete <span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span>? This cannot be undone!</>
+                        ) : (
+                            <>Move <span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span> to trash? You can restore it later.</>
+                        )}
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
@@ -200,14 +295,15 @@ export default function BlogsPage() {
                         </button>
                         <button
                             onClick={confirmDelete}
-                            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center"
+                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-500 hover:bg-yellow-600'
+                                }`}
                         >
                             <Trash2 size={16} className="mr-2" />
-                            Delete Blog
+                            {deleteMode === 'permanent' ? 'Permanently Delete' : 'Move to Trash'}
                         </button>
                     </div>
                 </div>
             </Modal>
-        </div>
+        </div >
     );
 }

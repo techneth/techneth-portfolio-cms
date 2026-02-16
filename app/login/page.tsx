@@ -41,12 +41,12 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4AB3A5 0%, #3A9A8D 100%)' }}>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00A99D 0%, #008F84 100%)' }}>
             <div className="max-w-md w-full mx-4">
                 {/* Logo and Header */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded mb-4">
-                        <span className="text-2xl font-bold" style={{ color: '#4AB3A5' }}>T</span>
+                        <span className="text-2xl font-bold" style={{ color: '#00A99D' }}>T</span>
                     </div>
                     <h1 className="text-3xl font-bold text-white mb-2">Techneth Admin</h1>
                     <p className="text-white/90">Sign in to manage your content</p>
@@ -71,7 +71,7 @@ export default function LoginPage() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="input-field w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5] focus:border-transparent"
+                                className="input-field w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D] focus:border-transparent"
                                 placeholder="admin@techneth.com"
                             />
                         </div>
@@ -86,7 +86,7 @@ export default function LoginPage() {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="input-field w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5] focus:border-transparent"
+                                className="input-field w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D] focus:border-transparent"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -95,9 +95,9 @@ export default function LoginPage() {
                             type="submit"
                             disabled={loading}
                             className="w-full py-3 px-4 rounded font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: loading ? '#3A9A8D' : '#4AB3A5' }}
-                            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = '#3A9A8D')}
-                            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = '#4AB3A5')}
+                            style={{ background: loading ? '#008F84' : '#00A99D' }}
+                            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = '#008F84')}
+                            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = '#00A99D')}
                         >
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>

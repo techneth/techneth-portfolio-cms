@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import Image from 'next/image';
+import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface ImageUploadProps {
@@ -24,10 +23,27 @@ export default function ImageUpload({
 }: ImageUploadProps) {
     const [preview, setPreview] = useState<string | null>(value || null);
     const [isDragging, setIsDragging] = useState(false);
+    const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
+        setImageError(false);
         if (value) {
-            setPreview(value);
+            // Basic validation to prevent "Invalid URL" errors
+            try {
+                if (value.startsWith('data:') || value.startsWith('/')) {
+                    setPreview(value);
+                } else {
+                    // Try constructing a URL to check validity
+                    new URL(value);
+                    setPreview(value);
+                }
+            } catch (e) {
+                console.warn('Invalid image URL provided:', value);
+                setPreview(null);
+                setImageError(true);
+            }
+        } else {
+            setPreview(null);
         }
     }, [value]);
 
@@ -85,7 +101,7 @@ export default function ImageUpload({
             <div
                 className={`
                     relative border-2 border-dashed rounded-lg p-4 transition-colors
-                    ${isDragging ? 'border-[#4AB3A5] bg-[#4AB3A5]/5' : 'border-gray-300 hover:border-[#4AB3A5]'}
+                    ${isDragging ? 'border-[#00A99D] bg-[#00A99D]/5' : 'border-gray-300 hover:border-[#00A99D]'}
                     ${preview ? 'h-64' : 'h-32'}
                 `}
                 onDragOver={(e) => {
@@ -97,12 +113,23 @@ export default function ImageUpload({
             >
                 {preview ? (
                     <div className="relative w-full h-full">
-                        <Image
-                            src={preview}
-                            alt="Preview"
-                            fill
-                            className="object-contain rounded"
-                        />
+                        {imageError ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                <AlertCircle size={48} className="mb-2" />
+                                <p className="text-sm font-medium">Failed to load image</p>
+                                <p className="text-xs mt-1">Invalid or broken image URL</p>
+                            </div>
+                        ) : (
+                            <img
+                                src={preview}
+                                alt="Preview"
+                                className="w-full h-full object-contain rounded"
+                                onError={(e) => {
+                                    console.warn('Image failed to load:', preview);
+                                    setImageError(true);
+                                }}
+                            />
+                        )}
                         <button
                             onClick={handleRemove}
                             className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"

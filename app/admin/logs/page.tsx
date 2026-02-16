@@ -21,9 +21,9 @@ interface ActivityLog {
 
 const actionColors: Record<string, string> = {
     create: '#28A745',
-    update: '#17A2B8',
+    update: '#00A99D',
     delete: '#DC3545',
-    login: '#4AB3A5',
+    login: '#00A99D',
     logout: '#6C757D',
 };
 
@@ -108,7 +108,7 @@ export default function LogsPage() {
                 </div>
                 <button
                     onClick={handleExport}
-                    className="flex items-center space-x-2 px-4 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                 >
                     <Download size={18} />
                     <span>Export Logs</span>
@@ -127,7 +127,7 @@ export default function LogsPage() {
                         <select
                             value={filters.actionType}
                             onChange={(e) => setFilters({ ...filters, actionType: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                         >
                             <option value="">All Actions</option>
                             <option value="create">Create</option>
@@ -142,7 +142,7 @@ export default function LogsPage() {
                         <select
                             value={filters.resourceType}
                             onChange={(e) => setFilters({ ...filters, resourceType: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                         >
                             <option value="">All Resources</option>
                             <option value="blog">Blog</option>
@@ -158,7 +158,7 @@ export default function LogsPage() {
                             type="date"
                             value={filters.startDate}
                             onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                         />
                     </div>
                     <div>
@@ -167,7 +167,7 @@ export default function LogsPage() {
                             type="date"
                             value={filters.endDate}
                             onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                         />
                     </div>
                     <div className="flex items-end">
@@ -195,7 +195,7 @@ export default function LogsPage() {
                 ) : (
                     <>
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="w-full min-w-[800px]">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

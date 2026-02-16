@@ -124,9 +124,10 @@ export async function deleteBlog(id: string) {
         throw new Error('Forbidden');
     }
 
+    // Soft delete
     const { error } = await supabase
         .from('blogs')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
     if (error) throw error;
@@ -140,6 +141,63 @@ export async function deleteBlog(id: string) {
         resourceType: 'blog',
         resourceId: id,
         resourceTitle: blog.title,
+        changes: { deleted_at: { before: null, after: 'now' } }
+    });
+
+    revalidatePath('/admin/blogs');
+}
+
+export async function restoreBlog(id: string) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { data, error } = await supabase
+        .from('blogs')
+        .update({ deleted_at: null })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'update',
+        resourceType: 'blog',
+        resourceId: id,
+        resourceTitle: data.title,
+        changes: { deleted_at: { before: 'timestamp', after: null } }
+    });
+
+    revalidatePath('/admin/blogs');
+    return data;
+}
+
+export async function permanentlyDeleteBlog(id: string) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { error } = await supabase
+        .from('blogs')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'delete',
+        resourceType: 'blog',
+        resourceId: id,
+        resourceTitle: 'Permanently Deleted Blog',
     });
 
     revalidatePath('/admin/blogs');
@@ -148,6 +206,7 @@ export async function deleteBlog(id: string) {
 export async function getBlogs(filters?: {
     status?: string;
     search?: string;
+    deleted?: boolean;
 }) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
@@ -158,6 +217,17 @@ export async function getBlogs(filters?: {
         .from('blogs')
         .select('*')
         .order('created_at', { ascending: false });
+
+    // Handle deleted items filter
+    if (filters?.deleted) {
+        if (user.role !== 'super_admin') {
+            return []; // Only super admins can see deleted items
+        }
+        query = query.not('deleted_at', 'is', null);
+    } else {
+        // Default behavior: show only non-deleted items
+        query = query.is('deleted_at', null);
+    }
 
     if (filters?.status) {
         query = query.eq('status', filters.status);

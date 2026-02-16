@@ -12,9 +12,12 @@ export async function uploadImage(
 ): Promise<{ path: string; fullPath: string } | null> {
     const supabase = createClient();
 
+    // Sanitize path to ensure safe URL construction
+    const sanitizedPath = path.replace(/[^a-zA-Z0-9\/._-]/g, '_');
+
     const { data, error } = await supabase.storage
         .from(bucket)
-        .upload(path, file, {
+        .upload(sanitizedPath, file, {
             cacheControl: '3600',
             upsert: false
         });
@@ -32,7 +35,9 @@ export async function uploadImage(
  */
 export function getImageUrl(bucket: StorageBucket, path: string): string {
     const supabase = createClient();
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    // Sanitize path to ensure consistency
+    const sanitizedPath = path.replace(/[^a-zA-Z0-9\/._-]/g, '_');
+    const { data } = supabase.storage.from(bucket).getPublicUrl(sanitizedPath);
     return data.publicUrl;
 }
 

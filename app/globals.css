@@ -2,22 +2,22 @@
 
 
 :root {
-  /* Techneth Color Scheme */
-  --primary: #4AB3A5;
-  --primary-dark: #3A9A8D;
-  --primary-light: #5CC3B5;
-  --secondary: #2C3E50;
-  --background: #F5F7FA;
+  /* Techneth Brand Color Palette */
+  --primary: #00A99D;
+  --primary-dark: #008F84;
+  --primary-light: #00C4B5;
+  --secondary: #1E3A8A;
+  --background: #F8F6EE;
   --card-bg: #FFFFFF;
-  --text: #333333;
+  --text: #000100;
   --text-light: #6C757D;
   --border: #E0E0E0;
   --success: #28A745;
   --warning: #FFC107;
   --danger: #DC3545;
-  --info: #17A2B8;
-  --sidebar-bg: #2C3E50;
-  --sidebar-active: #34495E;
+  --info: #00A99D;
+  --sidebar-bg: #1E3A8A;
+  --sidebar-active: #00A99D;
 }
 
 @theme inline {
@@ -101,7 +101,7 @@ body {
 .input-field:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(74, 179, 165, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 169, 157, 0.1);
 }
 
 .table-row:hover {

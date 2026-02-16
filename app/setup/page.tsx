@@ -6,7 +6,7 @@ export default function SetupPage() {
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#4AB3A5] to-[#2C3E50] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-[#00A99D] to-[#1E3A8A] flex items-center justify-center p-4">
             <div className="max-w-2xl w-full bg-white rounded-lg shadow-2xl p-8">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -38,7 +38,7 @@ export default function SetupPage() {
                                 href="https://supabase.com/dashboard"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center space-x-2 text-[#4AB3A5] hover:text-[#3A9A8D] text-sm font-medium"
+                                className="inline-flex items-center space-x-2 text-[#00A99D] hover:text-[#008F84] text-sm font-medium"
                             >
                                 <span>Open Supabase Dashboard</span>
                                 <ExternalLink size={16} />
@@ -126,13 +126,13 @@ export default function SetupPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                         <Link
                             href="file:///Users/leopard-workstation-office/.gemini/antigravity/brain/1354662b-5ba7-4cdc-bed3-eebf7df87bd0/setup_guide.md"
-                            className="text-[#4AB3A5] hover:text-[#3A9A8D]"
+                            className="text-[#00A99D] hover:text-[#008F84]"
                         >
                             → Detailed Setup Guide
                         </Link>
                         <Link
                             href="file:///Users/leopard-workstation-office/.gemini/antigravity/brain/1354662b-5ba7-4cdc-bed3-eebf7df87bd0/walkthrough.md"
-                            className="text-[#4AB3A5] hover:text-[#3A9A8D]"
+                            className="text-[#00A99D] hover:text-[#008F84]"
                         >
                             → Feature Walkthrough
                         </Link>

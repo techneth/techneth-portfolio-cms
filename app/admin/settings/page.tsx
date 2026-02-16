@@ -88,7 +88,7 @@ export default function SettingsPage() {
                     User management features will be implemented here. Super admins can create, edit, and manage admin users.
                 </p>
 
-                <button className="px-4 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors">
+                <button className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors">
                     Add New User
                 </button>
             </div>
@@ -104,7 +104,7 @@ export default function SettingsPage() {
                         }, 1000);
                     }}
                     disabled={saving}
-                    className="flex items-center space-x-2 px-6 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors disabled:opacity-50"
+                    className="flex items-center space-x-2 px-6 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors disabled:opacity-50"
                 >
                     <Save size={18} />
                     <span>{saving ? 'Saving...' : 'Save Settings'}</span>

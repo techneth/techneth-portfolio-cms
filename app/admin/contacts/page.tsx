@@ -38,7 +38,7 @@ export default function ContactsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Contact Submissions</h1>
                     <p className="text-gray-600 mt-2">View and manage contact form submissions</p>
@@ -70,7 +70,7 @@ export default function ContactsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[640px]">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -92,12 +92,12 @@ export default function ContactsPage() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {contacts.map((contact) => (
-                                    <tr key={contact.id} className={`table-row ${contact.status === 'unread' ? 'bg-blue-50' : ''}`}>
+                                    <tr key={contact.id} className={`table-row ${contact.status === 'unread' ? 'bg-[#F8F6EE]' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900 flex items-center space-x-2">
                                                     {contact.status === 'unread' && (
-                                                        <Mail className="text-blue-500" size={16} />
+                                                        <Mail className="text-[#00A99D]" size={16} />
                                                     )}
                                                     <span>{contact.name}</span>
                                                 </div>
@@ -112,10 +112,10 @@ export default function ContactsPage() {
                                             <select
                                                 value={contact.status}
                                                 onChange={(e) => handleStatusChange(contact.id, e.target.value)}
-                                                className={`text-xs px-2 py-1 rounded border ${contact.status === 'unread' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                                        contact.status === 'read' ? 'bg-gray-100 text-gray-800 border-gray-300' :
-                                                            contact.status === 'replied' ? 'bg-green-100 text-green-800 border-green-300' :
-                                                                'bg-gray-100 text-gray-800 border-gray-300'
+                                                className={`text-xs px-2 py-1 rounded border ${contact.status === 'unread' ? 'bg-[#00A99D]/10 text-[#008F84] border-[#00A99D]' :
+                                                    contact.status === 'read' ? 'bg-gray-100 text-gray-800 border-gray-300' :
+                                                        contact.status === 'replied' ? 'bg-green-100 text-green-800 border-green-300' :
+                                                            'bg-gray-100 text-gray-800 border-gray-300'
                                                     }`}
                                             >
                                                 <option value="unread">Unread</option>
@@ -130,7 +130,7 @@ export default function ContactsPage() {
                                         <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => alert('View details coming soon')}
-                                                className="text-[#4AB3A5] hover:text-[#3A9A8D]"
+                                                className="text-[#00A99D] hover:text-[#008F84]"
                                             >
                                                 <Eye size={18} />
                                             </button>

@@ -192,7 +192,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                     <button
                         onClick={(e) => handleSubmit(e, 'published')}
                         disabled={saving}
-                        className="flex items-center space-x-2 px-4 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors disabled:opacity-50"
                     >
                         <Eye size={18} />
                         <span>Publish</span>
@@ -214,7 +214,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => handleTitleChange(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Enter blog title"
                                 required
                             />
@@ -227,7 +227,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 type="text"
                                 value={formData.slug}
                                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="blog-post-slug"
                                 required
                             />
@@ -240,7 +240,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 value={formData.excerpt}
                                 onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Short summary of the post"
                             />
                         </div>
@@ -278,7 +278,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 type="text"
                                 value={formData.seo_title}
                                 onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Leave empty to use the blog title"
                             />
                         </div>
@@ -290,7 +290,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 value={formData.seo_description}
                                 onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="Leave empty to use the excerpt"
                             />
                         </div>
@@ -304,13 +304,13 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                     value={keywordInput}
                                     onChange={(e) => setKeywordInput(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#4AB3A5]"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                     placeholder="Add a keyword and press Enter"
                                 />
                                 <button
                                     type="button"
                                     onClick={addKeyword}
-                                    className="px-4 py-2 bg-[#4AB3A5] text-white rounded hover:bg-[#3A9A8D] transition-colors"
+                                    className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                                 >
                                     Add
                                 </button>

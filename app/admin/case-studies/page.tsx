@@ -40,14 +40,14 @@ export default function CaseStudiesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Case Studies</h1>
                     <p className="text-gray-600 mt-2">Manage your portfolio case studies</p>
                 </div>
                 <Link
                     href="/admin/case-studies/create"
-                    className="flex items-center space-x-2 px-4 py-2 bg-[#17A2B8] text-white rounded hover:bg-[#138496] transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                 >
                     <Plus size={20} />
                     <span>Create Case Study</span>
@@ -64,7 +64,7 @@ export default function CaseStudiesPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[640px]">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -119,7 +119,7 @@ export default function CaseStudiesPage() {
                                             <div className="flex items-center justify-end space-x-3">
                                                 <Link
                                                     href={`/admin/case-studies/${cs.id}/edit`}
-                                                    className="text-[#17A2B8] hover:text-[#138496]"
+                                                    className="text-[#00A99D] hover:text-[#008F84]"
                                                 >
                                                     <Edit size={18} />
                                                 </Link>
@@ -138,6 +138,6 @@ export default function CaseStudiesPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
