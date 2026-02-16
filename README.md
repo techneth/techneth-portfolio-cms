@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Techneth Admin Panel
 
-## Getting Started
+A comprehensive admin panel for managing the Techneth website built with Next.js 15, TypeScript, Tailwind CSS, and Supabase.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Authentication**: Secure login with Supabase Auth
+- **Role-Based Access Control**: Three user roles (Super Admin, Admin, Editor)
+- **Dashboard**: Stats, analytics, and recent activity feed
+- **Blog Management**: Full CRUD with Markdown editor
+- **Case Studies**: Portfolio management with SEO
+- **Contact Submissions**: Track and manage form submissions
+- **Activity Logs**: Comprehensive audit trail
+- **Settings**: System configuration and maintenance mode
+
+## Quick Start
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Set up Supabase**:
+   - Create a project at [supabase.com](https://supabase.com)
+   - Run `supabase_schema.sql` in the Supabase SQL Editor
+   - Get your credentials from Project Settings > API
+
+3. **Configure environment**:
+   - Copy `.env.local.example` to `.env.local`
+   - Add your Supabase URL and keys
+
+4. **Create admin user**:
+   - Create a user in Supabase Auth
+   - Add them to the `users` table with `role='super_admin'`
+
+5. **Run the app**:
+   ```bash
+   npm run dev
+   ```
+
+6. **Login**: Visit [http://localhost:3000/login](http://localhost:3000/login)
+
+## User Roles
+
+- **Super Admin**: Full access including users and settings
+- **Admin**: Manage all content, view logs (no user management)
+- **Editor**: Create/edit own content only
+
+## Key Features
+
+### Markdown Editor
+- Live preview with toolbar
+- Paste from Word/Docs
+- Image embedding
+- Autosave
+
+### Activity Logging
+Every action is logged with:
+- User and role
+- Action type
+- Resource affected
+- Before/after changes
+- Timestamp
+
+### Role-Based Permissions
+Fine-grained access control for each resource and action.
+
+## Tech Stack
+
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS (Techneth theme)
+- Supabase (Auth + Database)
+- SimpleMDE (Markdown editor)
+- Lucide icons
+
+## Project Structure
+
+```
+app/admin/          # Admin pages
+├── blogs/          # Blog management
+├── case-studies/   # Case studies
+├── contacts/       # Submissions
+├── logs/           # Activity logs
+└── settings/       # Settings
+components/admin/   # Reusable components
+lib/                # Utilities
+└── supabase/       # DB config
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev    # Start dev server
+npm run build  # Build for production
+npm start      # Start production server
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Documentation
 
-## Learn More
+- Database schema: `supabase_schema.sql`
+- Implementation plan: See artifacts
+- [Next.js Docs](https://nextjs.org/docs)
+- [Supabase Docs](https://supabase.com/docs)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built for Techneth with Techneth design system (teal #4AB3A5)
