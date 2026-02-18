@@ -3,21 +3,37 @@
 
 :root {
   /* Techneth Brand Color Palette */
+
+  /* Primary teal — used for buttons, links, footer, icons */
   --primary: #00A99D;
   --primary-dark: #008F84;
-  --primary-light: #00C4B5;
-  --secondary: #1E3A8A;
-  --background: #F8F6EE;
+  --primary-light: #33BAB1;
+  /* Calculated lighter shade */
+
+  /* Secondary navy — logo text, sidebar */
+  --secondary: #122454;
+
+  /* Backgrounds */
+  --background: #F8F9FA;
+  /* off-white section bg used on techneth.com */
   --card-bg: #FFFFFF;
-  --text: #000100;
-  --text-light: #6C757D;
-  --border: #E0E0E0;
+
+  /* Typography */
+  --text: #333333;
+  /* nav & body text color on techneth.com */
+  --text-light: #4A5568;
+  /* muted/secondary body text */
+
+  /* UI */
+  --border: #E2E8F0;
   --success: #28A745;
   --warning: #FFC107;
   --danger: #DC3545;
-  --info: #00A99D;
-  --sidebar-bg: #1E3A8A;
-  --sidebar-active: #00A99D;
+  --info: #238B7A;
+
+  /* Admin sidebar — matches the dark navy of the techneth.com logo */
+  --sidebar-bg: #122454;
+  --sidebar-active: #238B7A;
 }
 
 @theme inline {
@@ -101,7 +117,7 @@ body {
 .input-field:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0, 169, 157, 0.1);
+  box-shadow: 0 0 0 3px rgba(35, 139, 122, 0.15);
 }
 
 .table-row:hover {

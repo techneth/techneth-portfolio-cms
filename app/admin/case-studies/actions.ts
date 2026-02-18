@@ -76,7 +76,11 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
         throw new Error('Forbidden');
     }
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS for updates (since we already checked permissions)
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
+
+    const { data, error } = await adminClient
         .from('case_studies')
         .update({
             ...formData,
@@ -236,10 +240,10 @@ export async function getCaseStudies(filters?: {
         query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
     }
 
-    // Editors can only see their own case studies
-    if (user.role === 'editor') {
-        query = query.eq('created_by', user.id);
-    }
+    // Editors can now see all case studies to collaborate
+    // if (user.role === 'editor') {
+    //     query = query.eq('created_by', user.id);
+    // }
 
     const { data, error } = await query;
 
@@ -268,9 +272,10 @@ export async function getCaseStudy(id: string): Promise<Database['public']['Tabl
     if (error) throw error;
     if (!data) throw new Error('Case study not found');
 
-    if (user.role === 'editor' && data.created_by !== user.id) {
-        throw new Error('Forbidden');
-    }
+    // Editors can view all case studies
+    // if (user.role === 'editor' && data.created_by !== user.id) {
+    //     throw new Error('Forbidden');
+    // }
 
     return data as Database['public']['Tables']['case_studies']['Row'];
 }

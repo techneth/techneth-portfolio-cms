@@ -7,7 +7,7 @@ import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { createCaseStudy, CaseStudyFormData } from '../actions';
-import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
+import { uploadFile } from '@/app/admin/actions/upload';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -15,7 +15,7 @@ import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 export default function CreateCaseStudyPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const { addImage, uploadImages } = useImageUploadQueue();
+    const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<CaseStudyFormData>({
         title: '',
@@ -92,10 +92,14 @@ export default function CreateCaseStudyPage() {
                 const fileName = `${uuidv4()}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadResult = await uploadImage('case_studies', filePath, imageFile);
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', imageFile);
+                uploadFormData.append('bucket', 'case_studies');
+                uploadFormData.append('path', filePath);
 
-                if (uploadResult) {
-                    imageUrl = getImageUrl('case_studies', filePath);
+                const publicUrl = await uploadFile(uploadFormData);
+                if (publicUrl) {
+                    imageUrl = publicUrl;
                 }
             }
 
@@ -116,6 +120,7 @@ export default function CreateCaseStudyPage() {
             });
 
             toast.success('Case study created successfully!', { id: toastId });
+            clearQueue();
             router.push('/admin/case-studies');
         } catch (error) {
             console.error('Error creating case study:', error);
@@ -145,7 +150,7 @@ export default function CreateCaseStudyPage() {
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50"
                     >
                         <Save size={18} />
                         <span>Save as Draft</span>
@@ -293,7 +298,7 @@ export default function CreateCaseStudyPage() {
                                     <button
                                         type="button"
                                         onClick={() => removeTechnology(tech)}
-                                        className="ml-2 hover:text-red-200"
+                                        className="ml-2 hover:text-red-600"
                                     >
                                         ×
                                     </button>

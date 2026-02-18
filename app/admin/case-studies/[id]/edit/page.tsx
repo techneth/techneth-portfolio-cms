@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Save, Eye, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { getCaseStudy, updateCaseStudy, deleteCaseStudy, CaseStudyFormData } from '../../actions';
-import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
+import { uploadFile } from '@/app/admin/actions/upload';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -17,7 +17,7 @@ export default function EditCaseStudyPage() {
     const caseStudyId = params.id as string;
     const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const { addImage, uploadImages } = useImageUploadQueue();
+    const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<CaseStudyFormData>({
@@ -116,10 +116,14 @@ export default function EditCaseStudyPage() {
                 const fileName = `${uuidv4()}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadResult = await uploadImage('case_studies', filePath, imageFile);
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', imageFile);
+                uploadFormData.append('bucket', 'case_studies');
+                uploadFormData.append('path', filePath);
 
-                if (uploadResult) {
-                    imageUrl = getImageUrl('case_studies', filePath);
+                const publicUrl = await uploadFile(uploadFormData);
+                if (publicUrl) {
+                    imageUrl = publicUrl;
                 }
             }
 
@@ -140,6 +144,7 @@ export default function EditCaseStudyPage() {
             });
 
             toast.success('Case study updated successfully!', { id: toastId });
+            clearQueue();
             router.push('/admin/case-studies');
         } catch (error) {
             console.error('Error updating case study:', error);
@@ -150,14 +155,14 @@ export default function EditCaseStudyPage() {
     };
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this case study? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to delete this case study? This action cannot be undone.')) {
             return;
         }
 
         const toastId = toast.loading('Deleting case study...');
 
         try {
-            await deleteCaseStudy(id);
+            await deleteCaseStudy(caseStudyId);
             toast.success('Case study deleted successfully', { id: toastId });
             router.push('/admin/case-studies');
         } catch (error) {
@@ -193,7 +198,7 @@ export default function EditCaseStudyPage() {
                 <div className="flex space-x-3">
                     <button
                         onClick={handleDelete}
-                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors"
                     >
                         <Trash2 size={18} />
                         <span>Delete</span>
@@ -201,7 +206,7 @@ export default function EditCaseStudyPage() {
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={saving}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50"
                     >
                         <Save size={18} />
                         <span>Save as Draft</span>
@@ -349,7 +354,7 @@ export default function EditCaseStudyPage() {
                                     <button
                                         type="button"
                                         onClick={() => removeTechnology(tech)}
-                                        className="ml-2 hover:text-red-200"
+                                        className="ml-2 hover:text-red-600"
                                     >
                                         ×
                                     </button>

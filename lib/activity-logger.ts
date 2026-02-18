@@ -7,7 +7,7 @@ interface ActivityLogData {
     userName: string;
     userRole: string;
     actionType: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'read';
-    resourceType: 'blog' | 'case_study' | 'contact' | 'user' | 'settings' | 'other';
+    resourceType: 'blog' | 'case_study' | 'contact' | 'user' | 'settings' | 'job' | 'other';
     resourceId?: string;
     resourceTitle?: string;
     changes?: Record<string, any>;

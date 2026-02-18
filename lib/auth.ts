@@ -2,6 +2,7 @@ import { createServerClient } from './supabase/server';
 import { Database } from '@/types/database';
 
 export type UserRole = 'super_admin' | 'admin' | 'editor';
+export type UserStatus = 'pending' | 'approved' | 'rejected';
 
 export interface AuthUser {
     id: string;
@@ -9,6 +10,7 @@ export interface AuthUser {
     name: string;
     role: UserRole;
     avatar_url: string | null;
+    status: UserStatus;
 }
 
 /**
@@ -21,17 +23,40 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+        console.error('getCurrentUser: Auth error or no user', authError);
         return null;
     }
 
-    // Return a simplified user object without querying users table
-    // Middleware ensures the user is authenticated
+    // Fetch user details from users table
+    const { data: dbUser, error: dbError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+    // If user exists in auth but not in users table (rare, but possible with sync issues)
+    if (dbError || !dbUser) {
+        console.error('Error fetching user profile:', dbError);
+        // Fallback for immediate access if DB record missing, but restrict role
+        return {
+            id: user.id,
+            email: user.email || '',
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+            role: (user.user_metadata?.role as UserRole) || 'editor',
+            avatar_url: null,
+            status: 'approved' as UserStatus, // fallback for legacy users
+        };
+    }
+
+    const userData = dbUser as any;
+
     return {
-        id: user.id,
-        email: user.email || 'unknown@email.com',
-        name: user.email?.split('@')[0] || 'Admin User',
-        role: 'super_admin', // Default to super_admin for now
-        avatar_url: null,
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role as UserRole,
+        avatar_url: userData.avatar_url,
+        status: (userData.status as UserStatus) || 'approved',
     };
 }
 
@@ -59,31 +84,49 @@ export function canPerformAction(
 
     // Admin permissions
     if (user.role === 'admin') {
-        if (resource === 'users' || resource === 'settings') {
-            return false; // Admins can't manage users or settings
+        if (resource === 'users') {
+            // Admins can read and update users (restricted by logic elsewhere)
+            if (action === 'read' || action === 'update') return true;
+            // Admins CANNOT delete users
+            if (action === 'delete') return false;
+            return false;
         }
-        if (resource === 'logs') {
-            return action === 'read'; // Admins can only view logs
+        if (resource === 'settings') {
+            return false; // Admins can't manage settings
         }
-        return true; // Full access to other resources
+        if (resource === 'careers') {
+            return true; // Admins can manage careers/jobs
+        }
+        if (resource === 'logs' && action === 'read') {
+            return true; // Admins can view logs
+        }
+        // Admins can manage all content
+        if (['blogs', 'blog', 'case_studies', 'case_study', 'contacts'].includes(resource)) {
+            return true;
+        }
+        return false; // Default for admin if not explicitly allowed
     }
 
     // Editor permissions
     if (user.role === 'editor') {
-        if (resource === 'users' || resource === 'settings' || resource === 'logs') {
-            return false; // Editors can't access these
-        }
-        if (resource === 'contacts') {
-            return action === 'read'; // Editors can only view contacts
-        }
-        if (action === 'delete') {
-            return false; // Editors can't delete
-        }
-        // Editors can only edit their own content
-        if (action === 'update' && resourceOwnerId && resourceOwnerId !== user.id) {
+        // Editors can't access these
+        if (['users', 'settings', 'logs', 'careers'].includes(resource)) {
             return false;
         }
-        return action === 'create' || action === 'read' || (action === 'update' && resourceOwnerId === user.id);
+
+        // Editors can only read contacts
+        if (resource === 'contacts' && action === 'read') {
+            return true;
+        }
+
+        // Editors can create, read, update AND DELETE blogs/case_studies (per user request)
+        if (['blogs', 'blog', 'case_studies', 'case_study'].includes(resource)) {
+            // Allow all actions including delete
+            return true;
+        }
+
+        // If none of the above, deny by default
+        return false;
     }
 
     return false;

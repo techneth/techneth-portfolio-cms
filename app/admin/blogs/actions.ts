@@ -74,7 +74,11 @@ export async function updateBlog(id: string, formData: BlogFormData) {
         throw new Error('Forbidden');
     }
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS for updates (since we already checked permissions)
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
+
+    const { data, error } = await adminClient
         .from('blogs')
         .update({
             ...formData,
@@ -237,10 +241,10 @@ export async function getBlogs(filters?: {
         query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
     }
 
-    // Editors can only see their own blogs
-    if (user.role === 'editor') {
-        query = query.eq('created_by', user.id);
-    }
+    // Editors can now see all blogs to collaborate
+    // if (user.role === 'editor') {
+    //     query = query.eq('created_by', user.id);
+    // }
 
     const { data, error } = await query;
 
@@ -269,10 +273,10 @@ export async function getBlog(id: string): Promise<Database['public']['Tables'][
     if (error) throw error;
     if (!data) throw new Error('Blog not found');
 
-    // Editors can only view their own blogs
-    if (user.role === 'editor' && data.created_by !== user.id) {
-        throw new Error('Forbidden');
-    }
+    // Editors can view all blogs
+    // if (user.role === 'editor' && data.created_by !== user.id) {
+    //     throw new Error('Forbidden');
+    // }
 
     return data as Database['public']['Tables']['blogs']['Row'];
 }

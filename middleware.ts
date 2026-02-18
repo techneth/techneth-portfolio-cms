@@ -41,24 +41,69 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    console.log('🔵 Middleware - Request path:', request.nextUrl.pathname);
+    const path = request.nextUrl.pathname;
+
+    console.log('🔵 Middleware - Request path:', path);
     console.log('🔵 Middleware - User from getUser():', user?.id || 'null');
 
+    // Public routes — always accessible
+    if (path === '/signup') {
+        // If already authenticated and approved, redirect to admin
+        if (user) {
+            return NextResponse.redirect(new URL('/admin', request.url));
+        }
+        return response;
+    }
+
     // Check if user is trying to access admin routes
-    if (request.nextUrl.pathname.startsWith('/admin')) {
-        // If not authenticated, redirect to login
+    if (path.startsWith('/admin')) {
         if (!user) {
             console.log('🔴 Middleware: No user, redirecting to /login');
             return NextResponse.redirect(new URL('/login', request.url));
         }
 
-        console.log('✅ Middleware: User authenticated, allowing access to:', request.nextUrl.pathname);
-        // User is authenticated, allow access
-        // Note: Role-based checks can be done in the actual page components
+        // Check user status in DB to gate pending/rejected users
+        const { data: dbUser } = await supabase
+            .from('users')
+            .select('status')
+            .eq('id', user.id)
+            .single();
+
+        const status = dbUser?.status || 'approved';
+
+        if (status === 'pending') {
+            console.log('🟡 Middleware: User is pending, redirecting to /pending');
+            return NextResponse.redirect(new URL('/pending', request.url));
+        }
+
+        if (status === 'rejected') {
+            console.log('🔴 Middleware: User is rejected, redirecting to /login');
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+
+        console.log('✅ Middleware: User authenticated and approved, allowing access to:', path);
+    }
+
+    // Handle /pending page
+    if (path === '/pending') {
+        if (!user) {
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+        // If user is approved, redirect to admin
+        const { data: dbUser } = await supabase
+            .from('users')
+            .select('status')
+            .eq('id', user.id)
+            .single();
+
+        const status = dbUser?.status || 'approved';
+        if (status === 'approved') {
+            return NextResponse.redirect(new URL('/admin', request.url));
+        }
     }
 
     // If user is authenticated and trying to access login page, redirect to admin
-    if (request.nextUrl.pathname === '/login' && user) {
+    if (path === '/login' && user) {
         return NextResponse.redirect(new URL('/admin', request.url));
     }
 
@@ -66,5 +111,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/login'],
+    matcher: ['/admin/:path*', '/login', '/signup', '/pending'],
 };

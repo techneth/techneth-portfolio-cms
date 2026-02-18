@@ -1,14 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, MailOpen, CheckCircle, Archive, Eye } from 'lucide-react';
+import { Mail, MailOpen, CheckCircle, Archive, Eye, Send, Phone, Building, Calendar, User as UserIcon } from 'lucide-react';
 import { getContacts, updateContactStatus } from './actions';
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
+import Modal from '@/components/admin/Modal';
+
+interface Contact {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    company: string | null;
+    subject: string | null;
+    message: string;
+    status: string;
+    priority: string;
+    created_at: string;
+}
 
 export default function ContactsPage() {
-    const [contacts, setContacts] = useState<any[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     useEffect(() => {
         loadContacts();
@@ -30,8 +47,38 @@ export default function ContactsPage() {
         try {
             await updateContactStatus(id, status);
             loadContacts();
+            toast.success('Status updated successfully');
         } catch (error) {
-            alert('Failed to update status');
+            toast.error('Failed to update status');
+        }
+    };
+
+    const handleViewDetails = async (contact: Contact) => {
+        setSelectedContact(contact);
+        setIsDetailsModalOpen(true);
+
+        // Mark as read when viewing details
+        if (contact.status === 'unread') {
+            await handleStatusChange(contact.id, 'read');
+        }
+    };
+
+    const handleReply = () => {
+        toast('Reply functionality coming soon! SMTP integration will be added here.', {
+            icon: '📧',
+            duration: 3000,
+        });
+        // Future: Open email compose modal with selectedContact.email pre-filled
+    };
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case 'high':
+                return 'bg-red-100 text-red-800';
+            case 'low':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-primary/10 text-primary-dark';
         }
     };
 
@@ -92,12 +139,12 @@ export default function ContactsPage() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {contacts.map((contact) => (
-                                    <tr key={contact.id} className={`table-row ${contact.status === 'unread' ? 'bg-[#F8F6EE]' : ''}`}>
+                                    <tr key={contact.id} className={`table-row ${contact.status === 'unread' ? 'bg-primary/5' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900 flex items-center space-x-2">
                                                     {contact.status === 'unread' && (
-                                                        <Mail className="text-[#00A99D]" size={16} />
+                                                        <Mail className="text-primary" size={16} />
                                                     )}
                                                     <span>{contact.name}</span>
                                                 </div>
@@ -112,10 +159,10 @@ export default function ContactsPage() {
                                             <select
                                                 value={contact.status}
                                                 onChange={(e) => handleStatusChange(contact.id, e.target.value)}
-                                                className={`text-xs px-2 py-1 rounded border ${contact.status === 'unread' ? 'bg-[#00A99D]/10 text-[#008F84] border-[#00A99D]' :
-                                                    contact.status === 'read' ? 'bg-gray-100 text-gray-800 border-gray-300' :
-                                                        contact.status === 'replied' ? 'bg-green-100 text-green-800 border-green-300' :
-                                                            'bg-gray-100 text-gray-800 border-gray-300'
+                                                className={`text-xs px-2 py-1 rounded border ${contact.status === 'unread' ? 'bg-primary/10 text-primary-dark border-primary' :
+                                                    contact.status === 'read' ? 'bg-gray-100 text-gray-700 border-gray-300' :
+                                                        contact.status === 'replied' ? 'bg-primary/10 text-primary-dark border-primary' :
+                                                            'bg-gray-100 text-gray-700 border-gray-300'
                                                     }`}
                                             >
                                                 <option value="unread">Unread</option>
@@ -129,8 +176,9 @@ export default function ContactsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
-                                                onClick={() => alert('View details coming soon')}
-                                                className="text-[#00A99D] hover:text-[#008F84]"
+                                                onClick={() => handleViewDetails(contact)}
+                                                className="text-primary hover:text-primary-dark transition-colors"
+                                                title="View details"
                                             >
                                                 <Eye size={18} />
                                             </button>
@@ -142,6 +190,123 @@ export default function ContactsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Contact Details Modal */}
+            {isDetailsModalOpen && selectedContact && (
+                <Modal
+                    isOpen={isDetailsModalOpen}
+                    onClose={() => {
+                        setIsDetailsModalOpen(false);
+                        setSelectedContact(null);
+                    }}
+                    title="Contact Details"
+                >
+                    <div className="space-y-6">
+                        {/* Contact Information */}
+                        <div className="space-y-4">
+                            <div className="flex items-start space-x-3">
+                                <UserIcon className="text-gray-400 mt-1" size={20} />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedContact.name}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start space-x-3">
+                                <Mail className="text-gray-400 mt-1" size={20} />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                                    <a href={`mailto:${selectedContact.email}`} className="text-sm font-medium text-primary hover:text-primary-dark">
+                                        {selectedContact.email}
+                                    </a>
+                                </div>
+                            </div>
+
+                            {selectedContact.phone && (
+                                <div className="flex items-start space-x-3">
+                                    <Phone className="text-gray-400 mt-1" size={20} />
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
+                                        <a href={`tel:${selectedContact.phone}`} className="text-sm font-medium text-gray-900">
+                                            {selectedContact.phone}
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedContact.company && (
+                                <div className="flex items-start space-x-3">
+                                    <Building className="text-gray-400 mt-1" size={20} />
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Company</p>
+                                        <p className="text-sm font-medium text-gray-900">{selectedContact.company}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-start space-x-3">
+                                <Calendar className="text-gray-400 mt-1" size={20} />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {format(new Date(selectedContact.created_at), 'MMMM d, yyyy \'at\' h:mm a')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subject */}
+                        {selectedContact.subject && (
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Subject</p>
+                                <p className="text-sm font-medium text-gray-900">{selectedContact.subject}</p>
+                            </div>
+                        )}
+
+                        {/* Message */}
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Message</p>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedContact.message}</p>
+                            </div>
+                        </div>
+
+                        {/* Priority Badge */}
+                        <div>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedContact.priority)}`}>
+                                Priority: {selectedContact.priority.charAt(0).toUpperCase() + selectedContact.priority.slice(1)}
+                            </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-between items-center pt-4 border-t">
+                            <div className="flex space-x-3">
+                                <select
+                                    value={selectedContact.status}
+                                    onChange={(e) => {
+                                        handleStatusChange(selectedContact.id, e.target.value);
+                                        setSelectedContact({ ...selectedContact, status: e.target.value });
+                                    }}
+                                    className="input-field text-sm"
+                                >
+                                    <option value="unread">Unread</option>
+                                    <option value="read">Read</option>
+                                    <option value="replied">Replied</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={handleReply}
+                                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
+                            >
+                                <Send size={16} />
+                                <span>Reply</span>
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

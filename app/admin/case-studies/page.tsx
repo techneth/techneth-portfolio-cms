@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import { getCaseStudies, deleteCaseStudy } from './actions';
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 export default function CaseStudiesPage() {
     const [caseStudies, setCaseStudies] = useState<any[]>([]);
@@ -27,13 +28,16 @@ export default function CaseStudiesPage() {
     };
 
     const handleDelete = async (id: string, title: string) => {
-        if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+        const confirmed = window.confirm(`Are you sure you want to delete "${title}"?`);
+        if (!confirmed) return;
 
+        const toastId = toast.loading('Deleting case study...');
         try {
             await deleteCaseStudy(id);
+            toast.success('Case study deleted successfully', { id: toastId });
             loadCaseStudies();
         } catch (error) {
-            alert('Failed to delete case study');
+            toast.error('Failed to delete case study', { id: toastId });
         }
     };
 
@@ -93,7 +97,7 @@ export default function CaseStudiesPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-2">
                                                 {cs.is_featured && (
-                                                    <Star className="text-yellow-500" size={16} fill="currentColor" />
+                                                    <Star className="text-primary" size={16} fill="currentColor" />
                                                 )}
                                                 <div>
                                                     <div className="text-sm font-medium text-gray-900">{cs.title}</div>
@@ -108,7 +112,7 @@ export default function CaseStudiesPage() {
                                             {cs.industry || '-'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`badge ${cs.status === 'published' ? 'badge-success' : 'badge-warning'}`}>
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cs.status === 'published' ? 'bg-primary/10 text-primary-dark' : 'bg-secondary/10 text-secondary'}`}>
                                                 {cs.status}
                                             </span>
                                         </td>

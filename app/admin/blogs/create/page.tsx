@@ -7,7 +7,7 @@ import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { createBlog, BlogFormData } from '../actions';
-import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
+import { uploadFile } from '@/app/admin/actions/upload';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -15,7 +15,7 @@ import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 export default function CreateBlogPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const { addImage, uploadImages } = useImageUploadQueue();
+    const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<BlogFormData>({
         title: '',
@@ -88,10 +88,14 @@ export default function CreateBlogPage() {
                 const fileName = `${uuidv4()}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadResult = await uploadImage('blogs', filePath, imageFile);
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', imageFile);
+                uploadFormData.append('bucket', 'blogs');
+                uploadFormData.append('path', filePath);
 
-                if (uploadResult) {
-                    imageUrl = getImageUrl('blogs', filePath);
+                const publicUrl = await uploadFile(uploadFormData);
+                if (publicUrl) {
+                    imageUrl = publicUrl;
                 }
             }
 
@@ -112,6 +116,7 @@ export default function CreateBlogPage() {
             });
 
             toast.success('Blog created successfully!', { id: toastId });
+            clearQueue();
             router.push('/admin/blogs');
         } catch (error) {
             console.error('Error creating blog:', error);
@@ -141,7 +146,7 @@ export default function CreateBlogPage() {
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50"
                     >
                         <Save size={18} />
                         <span>Save as Draft</span>
@@ -283,7 +288,7 @@ export default function CreateBlogPage() {
                                         <button
                                             type="button"
                                             onClick={() => removeKeyword(keyword)}
-                                            className="ml-2 hover:text-red-500 font-bold"
+                                            className="ml-2 hover:text-red-600 font-bold"
                                         >
                                             ×
                                         </button>

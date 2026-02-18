@@ -24,7 +24,7 @@ export default function SetupPage() {
                             {supabaseConfigured ? (
                                 <CheckCircle className="text-green-500" size={24} />
                             ) : (
-                                <AlertCircle className="text-yellow-500" size={24} />
+                                <AlertCircle className="text-primary" size={24} />
                             )}
                         </div>
                         <div className="flex-1">
@@ -49,7 +49,7 @@ export default function SetupPage() {
                     {/* Step 2 */}
                     <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded">
                         <div className="flex-shrink-0 mt-1">
-                            <AlertCircle className="text-yellow-500" size={24} />
+                            <AlertCircle className="text-primary" size={24} />
                         </div>
                         <div className="flex-1">
                             <h3 className="font-semibold text-gray-800 mb-2">
@@ -68,7 +68,7 @@ export default function SetupPage() {
                     {/* Step 3 */}
                     <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded">
                         <div className="flex-shrink-0 mt-1">
-                            <AlertCircle className="text-yellow-500" size={24} />
+                            <AlertCircle className="text-primary" size={24} />
                         </div>
                         <div className="flex-1">
                             <h3 className="font-semibold text-gray-800 mb-2">
@@ -89,7 +89,7 @@ export default function SetupPage() {
                     {/* Step 4 */}
                     <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded">
                         <div className="flex-shrink-0 mt-1">
-                            <AlertCircle className="text-yellow-500" size={24} />
+                            <AlertCircle className="text-primary" size={24} />
                         </div>
                         <div className="flex-1">
                             <h3 className="font-semibold text-gray-800 mb-2">
@@ -104,7 +104,7 @@ export default function SetupPage() {
                     {/* Step 5 */}
                     <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded">
                         <div className="flex-shrink-0 mt-1">
-                            <AlertCircle className="text-yellow-500" size={24} />
+                            <AlertCircle className="text-primary" size={24} />
                         </div>
                         <div className="flex-1">
                             <h3 className="font-semibold text-gray-800 mb-2">
@@ -140,8 +140,8 @@ export default function SetupPage() {
                 </div>
 
                 {/* Status */}
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <p className="text-sm text-yellow-800">
+                <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded">
+                    <p className="text-sm text-primary-dark">
                         <strong>Current Status:</strong> {supabaseConfigured ?
                             'Supabase URL configured. Complete remaining steps.' :
                             'Waiting for Supabase configuration. Please update .env.local with your Supabase credentials.'}

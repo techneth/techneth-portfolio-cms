@@ -12,7 +12,8 @@ import {
     FileSearch,
     LogOut,
     Menu,
-    X
+    X,
+    Users
 } from 'lucide-react';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -66,10 +67,22 @@ export default function Sidebar({ user }: SidebarProps) {
             roles: ['super_admin', 'admin', 'editor'],
         },
         {
+            href: '/admin/careers',
+            label: 'Careers',
+            icon: <Briefcase size={20} />,
+            roles: ['super_admin', 'admin'],
+        },
+        {
             href: '/admin/logs',
             label: 'Activity Logs',
             icon: <FileSearch size={20} />,
             roles: ['super_admin', 'admin'],
+        },
+        {
+            href: '/admin/users',
+            label: 'Users',
+            icon: <Users size={20} />,
+            roles: ['super_admin'],
         },
         {
             href: '/admin/settings',
@@ -111,14 +124,7 @@ export default function Sidebar({ user }: SidebarProps) {
                     {/* Logo */}
                     <div className="p-6 pt-20 lg:pt-6 border-b border-white/10">
                         <div className="flex items-center space-x-3">
-                            <Image
-                                src="/logo.png"
-                                alt="Techneth Logo"
-                                width={160}
-                                height={45}
-                                className="object-contain h-10 w-auto"
-                                priority
-                            />
+                            <Image src="/techneth.svg" alt="Techneth Logo" width={200} height={200} className="h-20 w-auto" />
                         </div>
                     </div>
 
@@ -137,7 +143,7 @@ export default function Sidebar({ user }: SidebarProps) {
                                             className={`
                         flex items-center space-x-3 px-4 py-3 rounded transition-colors
                         ${isActive
-                                                    ? 'bg-[#00A99D] text-white'
+                                                    ? 'bg-primary text-white'
                                                     : 'text-white/80 hover:bg-white/10'
                                                 }
                       `}
@@ -154,7 +160,7 @@ export default function Sidebar({ user }: SidebarProps) {
                     {/* User Profile */}
                     <div className="p-6 border-t border-white/10">
                         <div className="flex items-center space-x-3 mb-4">
-                            <div className="w-10 h-10 bg-[#00A99D] rounded-full flex items-center justify-center text-white font-semibold">
+                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">

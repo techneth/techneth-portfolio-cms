@@ -72,14 +72,15 @@ export default function BlogsPage() {
     };
 
     const handleRestore = async (id: string, title: string) => {
-        if (!confirm(`Restore "${title}"?`)) return;
+        if (!window.confirm(`Restore "${title}"?`)) return;
 
+        const toastId = toast.loading('Restoring blog...');
         try {
             await restoreBlog(id);
-            toast.success('Blog restored successfully');
+            toast.success('Blog restored successfully', { id: toastId });
             loadBlogs();
         } catch (error) {
-            toast.error('Failed to restore blog');
+            toast.error('Failed to restore blog', { id: toastId });
         }
     };
 
@@ -131,7 +132,7 @@ export default function BlogsPage() {
                     onClick={() => setViewFilter('active')}
                     className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active'
                         ? 'bg-[#00A99D] text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'
                         }`}
                 >
                     Active Blogs
@@ -140,7 +141,7 @@ export default function BlogsPage() {
                     onClick={() => setViewFilter('trash')}
                     className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash'
                         ? 'bg-[#DC3545] text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'
                         }`}
                 >
                     <Trash size={16} />
@@ -214,7 +215,7 @@ export default function BlogsPage() {
                                             {blog.author_name || 'Unknown'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`badge ${blog.status === 'published' ? 'badge-success' : 'badge-warning'}`}>
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published' ? 'bg-primary/10 text-primary-dark' : 'bg-secondary/10 text-secondary'}`}>
                                                 {blog.status}
                                             </span>
                                         </td>
@@ -289,13 +290,15 @@ export default function BlogsPage() {
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
                             onClick={() => setIsDeleteModalOpen(false)}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={confirmDelete}
-                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-500 hover:bg-yellow-600'
+                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent'
+                                ? 'bg-[#DC3545] hover:bg-[#DC3545]/90'
+                                : 'bg-[#00A99D] hover:bg-[#008F84]'
                                 }`}
                         >
                             <Trash2 size={16} className="mr-2" />

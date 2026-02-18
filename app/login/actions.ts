@@ -28,19 +28,55 @@ export async function loginAction(email: string, password: string) {
         }
     );
 
+    console.log('Attempting login for:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
     });
 
     if (error) {
+        console.error('Login error:', JSON.stringify(error, null, 2));
         return { error: error.message };
     }
 
     if (!data.user) {
-        return { error: 'Login failed' };
+        console.error('Login failed: No user data returned', JSON.stringify(data, null, 2));
+        return { error: 'Login failed: Server returned no user' };
     }
 
-    // Redirect to admin
+    console.log('Login successful for user:', data.user.id);
+
+    // Check user status in the users table
+    const { data: dbUser, error: dbError } = await supabase
+        .from('users')
+        .select('status, is_active')
+        .eq('id', data.user.id)
+        .single();
+
+    if (dbError || !dbUser) {
+        // User exists in auth but not in users table — treat as pending
+        await supabase.auth.signOut();
+        return { error: 'Your account is not yet set up. Please contact an administrator.' };
+    }
+
+    const status = dbUser.status || 'approved'; // fallback for legacy users without status
+
+    if (status === 'pending') {
+        // Don't sign them out — redirect to pending page
+        redirect('/pending');
+    }
+
+    if (status === 'rejected') {
+        // Sign them out and show error
+        await supabase.auth.signOut();
+        return { error: 'Your account request has been rejected. Please contact an administrator.' };
+    }
+
+    // status === 'approved' — stamp last_login then redirect
+    await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', data.user.id);
+
     redirect('/admin');
 }

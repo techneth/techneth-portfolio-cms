@@ -7,7 +7,7 @@ import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { getBlog, updateBlog, deleteBlog, BlogFormData } from '../../actions';
-import { uploadImage, getImageUrl } from '@/lib/supabase/storage';
+import { uploadFile } from '@/app/admin/actions/upload';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -16,7 +16,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     const { id } = use(params); // Original line, keeping it as it's correct for RSC context. The user's diff had `const params = useParams();` which is for client components. This component is already marked 'use client' and `use(params)` is correct for accessing the resolved promise value.
     const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const { addImage, uploadImages } = useImageUploadQueue();
+    const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [formData, setFormData] = useState<BlogFormData>({
@@ -109,10 +109,14 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 const fileName = `${uuidv4()}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadResult = await uploadImage('blogs', filePath, imageFile);
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', imageFile);
+                uploadFormData.append('bucket', 'blogs');
+                uploadFormData.append('path', filePath);
 
-                if (uploadResult) {
-                    imageUrl = getImageUrl('blogs', filePath);
+                const publicUrl = await uploadFile(uploadFormData);
+                if (publicUrl) {
+                    imageUrl = publicUrl;
                 }
             }
 
@@ -133,6 +137,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             });
 
             toast.success('Blog updated successfully!', { id: toastId });
+            clearQueue();
             router.push('/admin/blogs');
         } catch (error) {
             console.error('Error updating blog:', error);
@@ -143,7 +148,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     };
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this blog? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to delete this blog? This action cannot be undone.')) {
             return;
         }
 
@@ -186,7 +191,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 <div className="flex space-x-3">
                     <button
                         onClick={handleDelete}
-                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors"
                     >
                         <Trash2 size={18} />
                         <span>Delete</span>
@@ -194,7 +199,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={saving}
-                        className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50"
                     >
                         <Save size={18} />
                         <span>Save as Draft</span>
@@ -336,7 +341,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                         <button
                                             type="button"
                                             onClick={() => removeKeyword(keyword)}
-                                            className="ml-2 hover:text-red-500 font-bold"
+                                            className="ml-2 hover:text-red-600 font-bold"
                                         >
                                             ×
                                         </button>

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { loginAction } from './actions';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -45,18 +47,24 @@ export default function LoginPage() {
             <div className="max-w-md w-full mx-4">
                 {/* Logo and Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded mb-4">
-                        <span className="text-2xl font-bold" style={{ color: '#00A99D' }}>T</span>
+                    <div className="flex justify-center mb-6">
+                        <Image
+                            src="/techneth.svg"
+                            alt="Techneth Logo"
+                            width={240}
+                            height={80}
+                            className="h-24 w-auto drop-shadow-lg"
+                            priority
+                        />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Techneth Admin</h1>
-                    <p className="text-white/90">Sign in to manage your content</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">Admin Panel</h1>
                 </div>
 
                 {/* Login Form */}
                 <div className="bg-white rounded shadow-xl p-8">
                     <form onSubmit={handleLogin}>
                         {error && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+                            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 rounded text-sm">
                                 {error}
                             </div>
                         )}
@@ -105,6 +113,12 @@ export default function LoginPage() {
 
                     <div className="mt-6 text-center text-sm text-gray-600">
                         <p>Techneth Content Management System</p>
+                        <p className="mt-2">
+                            Don&apos;t have an account?{' '}
+                            <Link href="/signup" className="text-[#00A99D] hover:text-[#008F84] font-medium">
+                                Request access
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>

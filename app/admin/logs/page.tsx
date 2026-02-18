@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Filter, Search, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 interface ActivityLog {
     id: string;
@@ -20,8 +21,8 @@ interface ActivityLog {
 }
 
 const actionColors: Record<string, string> = {
-    create: '#28A745',
-    update: '#00A99D',
+    create: '#00A99D',
+    update: '#00C9BA',
     delete: '#DC3545',
     login: '#00A99D',
     logout: '#6C757D',
@@ -79,6 +80,7 @@ export default function LogsPage() {
     };
 
     const handleExport = async () => {
+        const toastId = toast.loading('Exporting logs...');
         try {
             const response = await fetch('/api/admin/logs/export');
             const blob = await response.blob();
@@ -90,9 +92,10 @@ export default function LogsPage() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+            toast.success('Logs exported successfully!', { id: toastId });
         } catch (error) {
             console.error('Error exporting logs:', error);
-            alert('Failed to export logs');
+            toast.error('Failed to export logs', { id: toastId });
         }
     };
 
@@ -176,7 +179,7 @@ export default function LogsPage() {
                                 setFilters({ actionType: '', resourceType: '', search: '', startDate: '', endDate: '' });
                                 setPage(1);
                             }}
-                            className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                            className="w-full px-4 py-2 bg-[#00A99D]/10 text-[#008F84] border border-[#00A99D]/30 rounded hover:bg-[#00A99D]/20 transition-colors"
                         >
                             Clear Filters
                         </button>

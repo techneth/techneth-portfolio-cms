@@ -1,21 +1,34 @@
-import { useState } from 'react';
-import { uploadImage, getImageUrl, StorageBucket } from '@/lib/supabase/storage';
+import { useRef } from 'react';
+import { StorageBucket } from '@/lib/supabase/storage';
+import { uploadFile } from '@/app/admin/actions/upload';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useImageUploadQueue() {
-    const [pendingImages, setPendingImages] = useState<Record<string, File>>({});
+    // Use a ref so the map persists across renders without causing re-renders
+    const pendingImages = useRef<Map<string, File>>(new Map());
 
+    /**
+     * Register a file and return a blob URL for immediate preview in the editor.
+     * The actual upload happens only when uploadImages() is called at save time.
+     */
     const addImage = (file: File): string => {
         const url = URL.createObjectURL(file);
-        setPendingImages(prev => ({ ...prev, [url]: file }));
+        pendingImages.current.set(url, file);
         return url;
     };
 
-    const uploadImages = async (content: string, bucket: StorageBucket, basePath: string) => {
-        // Find distinct blob URLs in content that need uploading
+    /**
+     * Upload all pending images that appear in `content`, replace their blob URLs
+     * with the real Supabase Storage public URLs, and return the updated content.
+     */
+    const uploadImages = async (
+        content: string,
+        bucket: StorageBucket,
+        basePath: string
+    ): Promise<string> => {
         const blobsToUpload: { blobUrl: string; file: File }[] = [];
 
-        for (const [blobUrl, file] of Object.entries(pendingImages)) {
+        for (const [blobUrl, file] of pendingImages.current.entries()) {
             if (content.includes(blobUrl)) {
                 blobsToUpload.push({ blobUrl, file });
             }
@@ -23,35 +36,42 @@ export function useImageUploadQueue() {
 
         if (blobsToUpload.length === 0) return content;
 
-        // Upload images in parallel
+        // Upload all pending images in parallel
         const uploadResults = await Promise.all(
             blobsToUpload.map(async ({ blobUrl, file }) => {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${uuidv4()}.${fileExt}`;
                 const filePath = `${basePath}/${fileName}`;
 
-                try {
-                    await uploadImage(bucket, filePath, file);
-                    const publicUrl = getImageUrl(bucket, filePath);
-                    return { blobUrl, publicUrl };
-                } catch (error) {
-                    console.error(`Failed to upload image ${file.name}:`, error);
-                    throw error;
-                }
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('bucket', bucket);
+                formData.append('path', filePath);
+
+                const publicUrl = await uploadFile(formData);
+                return { blobUrl, publicUrl };
             })
         );
 
-        // Replace blob URLs with public URLs in content
+        // Replace blob URLs with permanent public URLs in content
         let newContent = content;
         for (const { blobUrl, publicUrl } of uploadResults) {
             newContent = newContent.replaceAll(blobUrl, publicUrl);
         }
 
-        // Cleanup uploaded blobs from state to free memory (optional, but good practice)
-        // We'll keep them for now in case of error retry, but ideally should clear.
-
         return newContent;
     };
 
-    return { addImage, uploadImages };
+    /**
+     * Revoke all blob URLs and clear the queue. Call this after a successful save
+     * to free browser memory.
+     */
+    const clearQueue = () => {
+        for (const blobUrl of pendingImages.current.keys()) {
+            URL.revokeObjectURL(blobUrl);
+        }
+        pendingImages.current.clear();
+    };
+
+    return { addImage, uploadImages, clearQueue };
 }

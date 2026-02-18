@@ -1,4 +1,4 @@
-import { BarChart3, TrendingUp, Users, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface StatCardProps {
     title: string;
@@ -6,11 +6,12 @@ interface StatCardProps {
     change?: string;
     icon: React.ReactNode;
     color: string;
+    href?: string;
 }
 
-export default function StatCard({ title, value, change, icon, color }: StatCardProps) {
-    return (
-        <div className="admin-card p-6">
+export default function StatCard({ title, value, change, icon, color, href }: StatCardProps) {
+    const content = (
+        <div className={`admin-card p-6 ${href ? 'transition-transform hover:scale-[1.02] cursor-pointer' : ''}`}>
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm text-gray-600 mb-1">{title}</p>
@@ -31,4 +32,10 @@ export default function StatCard({ title, value, change, icon, color }: StatCard
             </div>
         </div>
     );
+
+    if (href) {
+        return <Link href={href} className="block">{content}</Link>;
+    }
+
+    return content;
 }
