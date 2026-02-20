@@ -8,6 +8,22 @@ export async function middleware(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
 
+    // Domain restriction check
+    const hostname = request.headers.get('host') || '';
+    const isAllowedDomain = hostname.includes('techneth.com') ||
+        hostname.includes('localhost') ||
+        hostname.includes('127.0.0.1');
+
+    if (!isAllowedDomain) {
+        return new NextResponse(
+            JSON.stringify({ error: 'Access Denied: Invalid Domain' }),
+            {
+                status: 403,
+                headers: { 'content-type': 'application/json' }
+            }
+        );
+    }
+
     // If Supabase not configured, redirect all routes to setup page except setup itself
     if (!supabaseUrl || !supabaseKey ||
         supabaseUrl.includes('your-') || supabaseKey.includes('your-')) {
