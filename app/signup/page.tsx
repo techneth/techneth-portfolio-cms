@@ -5,6 +5,7 @@ import { signupAction } from './actions';
 import Link from 'next/link';
 import Image from 'next/image';
 import { UserPlus, CheckCircle } from 'lucide-react';
+import logo from '@/public/techneth.svg';   
 
 export default function SignupPage() {
     const [name, setName] = useState('');
@@ -75,7 +76,7 @@ export default function SignupPage() {
                 <div className="text-center mb-8">
                     <div className="flex justify-center mb-6">
                         <Image
-                            src="/techneth.svg"
+                            src={logo}
                             alt="Techneth Logo"
                             width={240}
                             height={80}

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { StorageBucket } from '@/lib/supabase/storage';
-import { uploadFile } from '@/app/admin/actions/upload';
+import { uploadFile } from '@/app/(admin)/actions/upload';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useImageUploadQueue() {

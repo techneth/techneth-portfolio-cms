@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { loginAction } from './actions';
 import Link from 'next/link';
 import Image from 'next/image';
+import logo from '@/public/techneth.svg';   
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -49,7 +50,7 @@ export default function LoginPage() {
                 <div className="text-center mb-8">
                     <div className="flex justify-center mb-6">
                         <Image
-                            src="/techneth.svg"
+                            src={logo}
                             alt="Techneth Logo"
                             width={240}
                             height={80}

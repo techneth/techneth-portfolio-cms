@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    domains: ['techneth-bucket.s3.ap-south-1.amazonaws.com'],
     remotePatterns: [
       {
         protocol: 'https',

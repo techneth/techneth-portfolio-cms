@@ -78,5 +78,5 @@ export async function loginAction(email: string, password: string) {
         .update({ last_login: new Date().toISOString() })
         .eq('id', data.user.id);
 
-    redirect('/admin');
+    redirect('/');
 }

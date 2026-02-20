@@ -43,49 +43,49 @@ export default function Sidebar({ user }: SidebarProps) {
 
     const menuItems: MenuItem[] = [
         {
-            href: '/admin',
+            href: '/',
             label: 'Dashboard',
             icon: <LayoutDashboard size={20} />,
             roles: ['super_admin', 'admin', 'editor'],
         },
         {
-            href: '/admin/blogs',
+            href: '/blogs',
             label: 'Blogs',
             icon: <FileText size={20} />,
             roles: ['super_admin', 'admin', 'editor'],
         },
         {
-            href: '/admin/case-studies',
+            href: '/case-studies',
             label: 'Case Studies',
             icon: <Briefcase size={20} />,
             roles: ['super_admin', 'admin', 'editor'],
         },
         {
-            href: '/admin/contacts',
+            href: '/contacts',
             label: 'Contact Submissions',
             icon: <Mail size={20} />,
             roles: ['super_admin', 'admin', 'editor'],
         },
         {
-            href: '/admin/careers',
+            href: '/careers',
             label: 'Careers',
             icon: <Briefcase size={20} />,
             roles: ['super_admin', 'admin'],
         },
         {
-            href: '/admin/logs',
+            href: '/logs',
             label: 'Activity Logs',
             icon: <FileSearch size={20} />,
             roles: ['super_admin', 'admin'],
         },
         {
-            href: '/admin/users',
+            href: '/users',
             label: 'Users',
             icon: <Users size={20} />,
             roles: ['super_admin'],
         },
         {
-            href: '/admin/settings',
+            href: '/settings',
             label: 'Settings',
             icon: <Settings size={20} />,
             roles: ['super_admin'],
@@ -133,7 +133,7 @@ export default function Sidebar({ user }: SidebarProps) {
                         <ul className="space-y-1 px-3">
                             {filteredMenuItems.map((item) => {
                                 const isActive = pathname === item.href ||
-                                    (item.href !== '/admin' && pathname.startsWith(item.href));
+                                    (item.href !== '/' && pathname.startsWith(item.href));
 
                                 return (
                                     <li key={item.href}>
