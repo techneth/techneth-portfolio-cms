@@ -186,6 +186,43 @@ export async function permanentlyDeleteCaseStudy(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
+    // Get the case study first to delete its assets
+    const { data: caseStudy, error: fetchError } = await supabase
+        .from('case_studies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (!fetchError && caseStudy) {
+        // Extract image paths to delete
+        const bucket = 'case_studies';
+        const pathsToDelete: string[] = [];
+        const textToSearch = `${caseStudy.featured_image || ''} ${caseStudy.content || ''}`;
+        const bucketPrefix = `/storage/v1/object/public/${bucket}/`;
+
+        // Match anything after the bucket prefix until a quote, space, or bracket
+        const regex = new RegExp(`${bucketPrefix}([^"\\'\\s<>]+)`, 'g');
+
+        let match;
+        while ((match = regex.exec(textToSearch)) !== null) {
+            if (match[1]) {
+                const pathSegments = match[1].split('?')[0];
+                pathsToDelete.push(decodeURIComponent(pathSegments));
+            }
+        }
+
+        const uniquePaths = [...new Set(pathsToDelete)];
+        if (uniquePaths.length > 0) {
+            const { error: storageError } = await supabase.storage
+                .from(bucket)
+                .remove(uniquePaths);
+
+            if (storageError) {
+                console.error('Failed to delete storage assets:', storageError);
+            }
+        }
+    }
+
     const { error } = await supabase
         .from('case_studies')
         .delete()
