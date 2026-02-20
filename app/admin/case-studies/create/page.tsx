@@ -11,6 +11,7 @@ import { uploadFile } from '@/app/admin/actions/upload';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
+import ValidationModal from '@/components/admin/ValidationModal';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
@@ -33,6 +34,9 @@ export default function CreateCaseStudyPage() {
         seo_description: '',
     });
     const [techInput, setTechInput] = useState('');
+    const [contentWarnings, setContentWarnings] = useState<string[]>([]);
+    const [showValidationModal, setShowValidationModal] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
 
     const generateSlug = (title: string) => {
         return title
@@ -79,6 +83,17 @@ export default function CreateCaseStudyPage() {
             return;
         }
 
+        // If validation errors exist, show modal first
+        if (contentWarnings.length > 0) {
+            setPendingStatus(status);
+            setShowValidationModal(true);
+            return;
+        }
+
+        await processSubmit(status);
+    };
+
+    const processSubmit = async (status: 'draft' | 'published') => {
         setLoading(true);
         const toastId = toast.loading('Creating case study...');
 
@@ -130,10 +145,18 @@ export default function CreateCaseStudyPage() {
         }
     };
 
+    const handleConfirmSubmit = async () => {
+        setShowValidationModal(false);
+        if (pendingStatus) {
+            await processSubmit(pendingStatus);
+            setPendingStatus(null);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center space-x-4">
                     <Link
                         href="/admin/case-studies"
@@ -142,23 +165,23 @@ export default function CreateCaseStudyPage() {
                         <ArrowLeft size={24} />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Create Case Study</h1>
-                        <p className="text-gray-600 mt-2">Add a new portfolio case study</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Create Case Study</h1>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">Add a new portfolio case study</p>
                     </div>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-[#1E3A8A] text-white rounded hover:bg-[#1E3A8A]/90 transition-colors disabled:opacity-50 text-sm sm:text-base"
                     >
                         <Save size={18} />
-                        <span>Save as Draft</span>
+                        <span>Save Draft</span>
                     </button>
                     <button
                         onClick={(e) => handleSubmit(e, 'published')}
                         disabled={loading}
-                        className="flex items-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors disabled:opacity-50 text-sm sm:text-base"
                     >
                         <Eye size={18} />
                         <span>Publish</span>
@@ -169,7 +192,7 @@ export default function CreateCaseStudyPage() {
             {/* Form */}
             <form className="space-y-6">
                 {/* Basic Information */}
-                <div className="admin-card p-6">
+                <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h3>
                     <div className="space-y-4">
                         <div>
@@ -258,17 +281,19 @@ export default function CreateCaseStudyPage() {
                 </div>
 
                 {/* Content */}
-                <div className="admin-card p-6">
+                <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Content *</h3>
                     <MarkdownEditor
                         value={formData.content}
                         onChange={(value) => setFormData({ ...formData, content: value })}
                         placeholder="Describe the challenge, solution, and results..."
                         onImageSelect={addImage}
+                        seoKeywords={formData.seo_title ? [formData.seo_title] : []}
+                        onValidationCheck={setContentWarnings}
                     />
                 </div>
                 {/* Technologies */}
-                <div className="admin-card p-6">
+                <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Technologies Used</h3>
                     <div className="space-y-3">
                         <div className="flex space-x-2">
@@ -309,7 +334,7 @@ export default function CreateCaseStudyPage() {
                 </div>
 
                 {/* SEO */}
-                <div className="admin-card p-6">
+                <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">SEO Settings</h3>
                     <div className="space-y-4">
                         <div>
@@ -339,6 +364,13 @@ export default function CreateCaseStudyPage() {
                     </div>
                 </div>
             </form>
+
+            <ValidationModal
+                isOpen={showValidationModal}
+                onClose={() => setShowValidationModal(false)}
+                onConfirm={handleConfirmSubmit}
+                warnings={contentWarnings}
+            />
         </div>
     );
 }

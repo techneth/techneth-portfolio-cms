@@ -101,7 +101,7 @@ export function canPerformAction(
             return true; // Admins can view logs
         }
         // Admins can manage all content
-        if (['blogs', 'blog', 'case_studies', 'case_study', 'contacts'].includes(resource)) {
+        if (['blogs', 'blog', 'case_studies', 'case_study', 'contacts', 'contact'].includes(resource)) {
             return true;
         }
         return false; // Default for admin if not explicitly allowed

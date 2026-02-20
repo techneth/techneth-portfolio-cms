@@ -11,6 +11,8 @@ interface MarkdownEditorProps {
     onChange: (value: string) => void;
     placeholder?: string;
     onImageSelect?: (file: File) => string;
+    seoKeywords?: string[];
+    onValidationCheck?: (warnings: string[]) => void;
 }
 
 export default function MarkdownEditor(props: MarkdownEditorProps) {

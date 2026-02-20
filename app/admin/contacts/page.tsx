@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, MailOpen, CheckCircle, Archive, Eye, Send, Phone, Building, Calendar, User as UserIcon } from 'lucide-react';
-import { getContacts, updateContactStatus } from './actions';
+import { Mail, MailOpen, CheckCircle, Archive, Eye, Send, Phone, Building, Calendar, User as UserIcon, Loader2, X, ArrowLeft } from 'lucide-react';
+import { getContacts, updateContactStatus, replyToContact } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
@@ -26,6 +26,10 @@ export default function ContactsPage() {
     const [statusFilter, setStatusFilter] = useState('');
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [replying, setReplying] = useState(false);
+    const [replySubject, setReplySubject] = useState('');
+    const [replyMessage, setReplyMessage] = useState('');
+    const [showReplyForm, setShowReplyForm] = useState(false);
 
     useEffect(() => {
         loadContacts();
@@ -56,6 +60,9 @@ export default function ContactsPage() {
     const handleViewDetails = async (contact: Contact) => {
         setSelectedContact(contact);
         setIsDetailsModalOpen(true);
+        setShowReplyForm(false);
+        setReplySubject(`Re: ${contact.subject || 'Contact Inquiry'}`);
+        setReplyMessage('');
 
         // Mark as read when viewing details
         if (contact.status === 'unread') {
@@ -63,13 +70,29 @@ export default function ContactsPage() {
         }
     };
 
-    const handleReply = () => {
-        toast('Reply functionality coming soon! SMTP integration will be added here.', {
-            icon: '📧',
-            duration: 3000,
-        });
-        // Future: Open email compose modal with selectedContact.email pre-filled
+    const handleSendReply = async () => {
+        if (!selectedContact) return;
+        if (!replySubject.trim() || !replyMessage.trim()) {
+            toast.error('Subject and message are required');
+            return;
+        }
+
+        setReplying(true);
+        try {
+            await replyToContact(selectedContact.id, replySubject, replyMessage);
+            toast.success('Reply sent successfully');
+            setShowReplyForm(false);
+            setReplyMessage('');
+            loadContacts();
+            setSelectedContact({ ...selectedContact, status: 'replied' });
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to send reply');
+        } finally {
+            setReplying(false);
+        }
     };
+
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -199,112 +222,176 @@ export default function ContactsPage() {
                         setIsDetailsModalOpen(false);
                         setSelectedContact(null);
                     }}
-                    title="Contact Details"
+                    title={showReplyForm ? "Reply to Contact" : "Contact Details"}
                 >
-                    <div className="space-y-6">
-                        {/* Contact Information */}
+                    {showReplyForm ? (
                         <div className="space-y-4">
-                            <div className="flex items-start space-x-3">
-                                <UserIcon className="text-gray-400 mt-1" size={20} />
-                                <div className="flex-1">
-                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
-                                    <p className="text-sm font-medium text-gray-900">{selectedContact.name}</p>
+                            <button
+                                onClick={() => setShowReplyForm(false)}
+                                className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2"
+                            >
+                                <ArrowLeft size={16} className="mr-1" /> Back to details
+                            </button>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                                    <input
+                                        type="text"
+                                        value={selectedContact.email}
+                                        disabled
+                                        className="input-field bg-gray-50"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                                    <input
+                                        type="text"
+                                        value={replySubject}
+                                        onChange={(e) => setReplySubject(e.target.value)}
+                                        className="input-field"
+                                        placeholder="Subject"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                                    <textarea
+                                        value={replyMessage}
+                                        onChange={(e) => setReplyMessage(e.target.value)}
+                                        className="input-field min-h-[200px]"
+                                        placeholder="Type your reply here..."
+                                    />
+                                </div>
+
+                                <div className="flex justify-end pt-2">
+                                    <button
+                                        onClick={handleSendReply}
+                                        disabled={replying}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
+                                    >
+                                        {replying ? (
+                                            <>
+                                                <Loader2 size={16} className="animate-spin" />
+                                                <span>Sending...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send size={16} />
+                                                <span>Send Reply</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="flex items-start space-x-3">
-                                <Mail className="text-gray-400 mt-1" size={20} />
-                                <div className="flex-1">
-                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
-                                    <a href={`mailto:${selectedContact.email}`} className="text-sm font-medium text-primary hover:text-primary-dark">
-                                        {selectedContact.email}
-                                    </a>
-                                </div>
-                            </div>
-
-                            {selectedContact.phone && (
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Contact Information */}
+                            <div className="space-y-4">
                                 <div className="flex items-start space-x-3">
-                                    <Phone className="text-gray-400 mt-1" size={20} />
+                                    <UserIcon className="text-gray-400 mt-1" size={20} />
                                     <div className="flex-1">
-                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
-                                        <a href={`tel:${selectedContact.phone}`} className="text-sm font-medium text-gray-900">
-                                            {selectedContact.phone}
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Name</p>
+                                        <p className="text-sm font-medium text-gray-900">{selectedContact.name}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <Mail className="text-gray-400 mt-1" size={20} />
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                                        <a href={`mailto:${selectedContact.email}`} className="text-sm font-medium text-primary hover:text-primary-dark">
+                                            {selectedContact.email}
                                         </a>
                                     </div>
                                 </div>
-                            )}
 
-                            {selectedContact.company && (
+                                {selectedContact.phone && (
+                                    <div className="flex items-start space-x-3">
+                                        <Phone className="text-gray-400 mt-1" size={20} />
+                                        <div className="flex-1">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
+                                            <a href={`tel:${selectedContact.phone}`} className="text-sm font-medium text-gray-900">
+                                                {selectedContact.phone}
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedContact.company && (
+                                    <div className="flex items-start space-x-3">
+                                        <Building className="text-gray-400 mt-1" size={20} />
+                                        <div className="flex-1">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide">Company</p>
+                                            <p className="text-sm font-medium text-gray-900">{selectedContact.company}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex items-start space-x-3">
-                                    <Building className="text-gray-400 mt-1" size={20} />
+                                    <Calendar className="text-gray-400 mt-1" size={20} />
                                     <div className="flex-1">
-                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Company</p>
-                                        <p className="text-sm font-medium text-gray-900">{selectedContact.company}</p>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {format(new Date(selectedContact.created_at), 'MMMM d, yyyy \'at\' h:mm a')}
+                                        </p>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Subject */}
+                            {selectedContact.subject && (
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Subject</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedContact.subject}</p>
+                                </div>
                             )}
 
-                            <div className="flex items-start space-x-3">
-                                <Calendar className="text-gray-400 mt-1" size={20} />
-                                <div className="flex-1">
-                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {format(new Date(selectedContact.created_at), 'MMMM d, yyyy \'at\' h:mm a')}
-                                    </p>
+                            {/* Message */}
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Message</p>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedContact.message}</p>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Subject */}
-                        {selectedContact.subject && (
+                            {/* Priority Badge */}
                             <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Subject</p>
-                                <p className="text-sm font-medium text-gray-900">{selectedContact.subject}</p>
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedContact.priority)}`}>
+                                    Priority: {selectedContact.priority.charAt(0).toUpperCase() + selectedContact.priority.slice(1)}
+                                </span>
                             </div>
-                        )}
 
-                        {/* Message */}
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Message</p>
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedContact.message}</p>
-                            </div>
-                        </div>
+                            {/* Action Buttons */}
+                            <div className="flex justify-between items-center pt-4 border-t">
+                                <div className="flex space-x-3">
+                                    <select
+                                        value={selectedContact.status}
+                                        onChange={(e) => {
+                                            handleStatusChange(selectedContact.id, e.target.value);
+                                            setSelectedContact({ ...selectedContact, status: e.target.value });
+                                        }}
+                                        className="input-field text-sm"
+                                    >
+                                        <option value="unread">Unread</option>
+                                        <option value="read">Read</option>
+                                        <option value="replied">Replied</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
 
-                        {/* Priority Badge */}
-                        <div>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedContact.priority)}`}>
-                                Priority: {selectedContact.priority.charAt(0).toUpperCase() + selectedContact.priority.slice(1)}
-                            </span>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex justify-between items-center pt-4 border-t">
-                            <div className="flex space-x-3">
-                                <select
-                                    value={selectedContact.status}
-                                    onChange={(e) => {
-                                        handleStatusChange(selectedContact.id, e.target.value);
-                                        setSelectedContact({ ...selectedContact, status: e.target.value });
-                                    }}
-                                    className="input-field text-sm"
+                                <button
+                                    onClick={() => setShowReplyForm(true)}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
                                 >
-                                    <option value="unread">Unread</option>
-                                    <option value="read">Read</option>
-                                    <option value="replied">Replied</option>
-                                    <option value="archived">Archived</option>
-                                </select>
+                                    <Send size={16} />
+                                    <span>Reply</span>
+                                </button>
                             </div>
-
-                            <button
-                                onClick={handleReply}
-                                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
-                            >
-                                <Send size={16} />
-                                <span>Reply</span>
-                            </button>
                         </div>
-                    </div>
+                    )}
                 </Modal>
             )}
         </div>

@@ -107,7 +107,7 @@ export default function Sidebar({ user }: SidebarProps) {
             {/* Mobile Menu Toggle */}
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded bg-[#1E3A8A] text-white shadow-lg"
+                className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded bg-[ #08A698] text-white shadow-lg"
                 aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}

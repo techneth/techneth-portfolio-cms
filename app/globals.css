@@ -62,7 +62,7 @@ body {
 
 /* Admin Panel Styles */
 .admin-sidebar {
-  background: var(--sidebar-bg);
+  background: #08A698;
   color: #ffffff;
 }
 

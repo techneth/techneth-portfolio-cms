@@ -107,9 +107,17 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin', request.url));
     }
 
+    // Redirect root route
+    if (path === '/') {
+        if (user) {
+            return NextResponse.redirect(new URL('/admin', request.url));
+        }
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
+
     return response;
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/login', '/signup', '/pending'],
+    matcher: ['/', '/admin/:path*', '/login', '/signup', '/pending'],
 };

@@ -113,25 +113,25 @@ export default async function AdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Activity Feed */}
-                <div className="lg:col-span-2 admin-card p-6">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                <div className="lg:col-span-2 admin-card p-6 h-full flex flex-col">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2 shrink-0">
                         <Activity className="text-[#00A99D]" size={20} />
                         <span>Recent Activity</span>
                     </h3>
 
                     {recentActivity.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-gray-500 flex-1 flex flex-col justify-center">
                             <Clock className="mx-auto mb-2 opacity-50" size={32} />
                             No recent activity found.
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-4 flex-1">
                             {recentActivity.map((log: any) => (
                                 <div key={log.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
                                     <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${log.action_type === 'create' ? 'bg-[#00A99D]/10 text-[#00A99D]' :
-                                            log.action_type === 'update' ? 'bg-[#0B2B3E]/10 text-[#0B2B3E]' :
-                                                log.action_type === 'delete' ? 'bg-red-50 text-red-600' :
-                                                    'bg-gray-100 text-gray-600'
+                                        log.action_type === 'update' ? 'bg-[#0B2B3E]/10 text-[#0B2B3E]' :
+                                            log.action_type === 'delete' ? 'bg-red-50 text-red-600' :
+                                                'bg-gray-100 text-gray-600'
                                         }`}>
                                         <Activity size={14} />
                                     </div>
@@ -159,12 +159,12 @@ export default async function AdminDashboard() {
                 </div>
 
                 {/* Quick Actions (Sidebar) */}
-                <div className="admin-card p-6 h-fit">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                <div className="admin-card p-6 h-full flex flex-col">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2 shrink-0">
                         <Zap className="text-[#00A99D]" size={20} />
                         <span>Quick Actions</span>
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 flex-1">
                         <Link
                             href="/admin/blogs/create"
                             className="p-4 border border-gray-200 rounded-lg hover:border-[#00A99D] hover:bg-[#00A99D]/5 transition-all flex items-center space-x-3 group"
