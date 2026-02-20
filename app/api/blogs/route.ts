@@ -6,8 +6,9 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from('blogs')
-        .select('id, title, slug, excerpt, featured_image, published_at, author_name')
+        .select('*')
         .eq('status', 'published')
+        .is('deleted_at', null)
         .order('published_at', { ascending: false });
 
     if (error) {

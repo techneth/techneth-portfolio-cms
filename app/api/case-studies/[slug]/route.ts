@@ -13,6 +13,7 @@ export async function GET(
         .select('*')
         .eq('status', 'published')
         .eq('slug', slug)
+        .is('deleted_at', null)
         .single();
 
     if (error) {
