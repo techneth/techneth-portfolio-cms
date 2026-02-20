@@ -47,7 +47,7 @@ export default async function AdminDashboard() {
             {/* Primary Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Published Blogs */}
-                <Link href="/blogs" className="block transition-transform hover:scale-[1.02]">
+                <Link href="/blogs" className="block transition-transform hover:scale-[1.02] animate-fadeIn" style={{ animationDelay: '0.1s' }}>
                     <div className="admin-card p-6 bg-gradient-to-br from-[#00A99D]/10 to-white border-l-4 border-[#00A99D] h-full">
                         <div className="flex items-center justify-between">
                             <div>
@@ -63,7 +63,7 @@ export default async function AdminDashboard() {
                 </Link>
 
                 {/* Case Studies */}
-                <Link href="/case-studies" className="block transition-transform hover:scale-[1.02]">
+                <Link href="/case-studies" className="block transition-transform hover:scale-[1.02] animate-fadeIn" style={{ animationDelay: '0.2s' }}>
                     <div className="admin-card p-6 bg-gradient-to-br from-[#00A99D]/10 to-white border-l-4 border-[#00A99D] h-full">
                         <div className="flex items-center justify-between">
                             <div>
@@ -79,7 +79,7 @@ export default async function AdminDashboard() {
                 </Link>
 
                 {/* Unread Contacts */}
-                <Link href="/contacts" className="block transition-transform hover:scale-[1.02]">
+                <Link href="/contacts" className="block transition-transform hover:scale-[1.02] animate-fadeIn" style={{ animationDelay: '0.3s' }}>
                     <div className="admin-card p-6 bg-gradient-to-br from-[#00C9BA]/10 to-white border-l-4 border-[#00C9BA] h-full">
                         <div className="flex items-center justify-between">
                             <div>
@@ -95,7 +95,7 @@ export default async function AdminDashboard() {
                 </Link>
 
                 {/* Active Jobs */}
-                <Link href="/careers" className="block transition-transform hover:scale-[1.02]">
+                <Link href="/careers" className="block transition-transform hover:scale-[1.02] animate-fadeIn" style={{ animationDelay: '0.4s' }}>
                     <div className="admin-card p-6 bg-gradient-to-br from-[#00A99D]/5 to-white border-l-4 border-[#008F84] h-full">
                         <div className="flex items-center justify-between">
                             <div>
@@ -113,7 +113,7 @@ export default async function AdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Activity Feed */}
-                <div className="lg:col-span-2 admin-card p-6 h-full flex flex-col">
+                <div className="lg:col-span-2 admin-card p-6 h-full flex flex-col animate-fadeIn" style={{ animationDelay: '0.5s' }}>
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2 shrink-0">
                         <Activity className="text-[#00A99D]" size={20} />
                         <span>Recent Activity</span>
