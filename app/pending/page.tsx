@@ -3,6 +3,8 @@
 import { Clock, LogOut } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import logo from '@/public/techneth.svg';
 
 export default function PendingPage() {
     const router = useRouter();
@@ -20,12 +22,17 @@ export default function PendingPage() {
         <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00A99D 0%, #008F84 100%)' }}>
             <div className="max-w-md w-full mx-4">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded mb-4">
-                        <span className="text-2xl font-bold" style={{ color: '#00A99D' }}>T</span>
+                    <div className="flex justify-center mb-6">
+                        <Image
+                            src={logo}
+                            alt="Techneth Logo"
+                            width={240}
+                            height={80}
+                            className="h-24 w-auto drop-shadow-lg"
+                            priority
+                        />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Techneth Admin</h1>
                 </div>
-
                 <div className="bg-white rounded shadow-xl p-8 text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
                         <Clock className="text-primary" size={32} />

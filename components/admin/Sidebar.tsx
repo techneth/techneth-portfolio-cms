@@ -107,7 +107,7 @@ export default function Sidebar({ user }: SidebarProps) {
             {/* Mobile Menu Toggle */}
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded bg-[ #08A698] text-white shadow-lg"
+                className="lg:hidden fixed top-4 right-4 z-50 p-2 rounded bg-[#00A99D] text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-[#00A99D] focus:ring-offset-2"
                 aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -141,10 +141,10 @@ export default function Sidebar({ user }: SidebarProps) {
                                             href={item.href}
                                             onClick={() => setIsMobileMenuOpen(false)}
                                             className={`
-                        flex items-center space-x-3 px-4 py-3 rounded transition-colors
+                        flex items-center space-x-3 px-4 py-3 rounded transition-all duration-200 ease-in-out hover:translate-x-1
                         ${isActive
-                                                    ? 'bg-primary text-white'
-                                                    : 'text-white/80 hover:bg-white/10'
+                                                    ? 'bg-primary text-white shadow-md'
+                                                    : 'text-white/80 hover:bg-white/10 hover:text-white'
                                                 }
                       `}
                                         >

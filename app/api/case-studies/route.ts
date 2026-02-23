@@ -8,6 +8,7 @@ export async function GET() {
         .from('case_studies')
         .select('*')
         .eq('status', 'published')
+        .is('deleted_at', null)
         .order('published_at', { ascending: false });
 
     if (error) {

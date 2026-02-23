@@ -52,12 +52,45 @@
   --color-info: var(--info);
 }
 
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slideUpFade {
+    animation: slideUpFade 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUpFade {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 body {
   background: var(--background);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  transition: background-color 0.3s ease;
 }
 
 /* Admin Panel Styles */
@@ -70,6 +103,13 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary-light);
 }
 
 .btn-primary {
@@ -79,11 +119,17 @@ body {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
   background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 169, 157, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -93,7 +139,12 @@ body {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
 }
 
 .btn-danger {
@@ -103,6 +154,12 @@ body {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 .input-field {
@@ -155,4 +212,26 @@ body {
 /* Markdown Editor Styles */
 .EasyMDEContainer .CodeMirror {
   min-height: 300px;
+}
+/* Global Content Styles (for rendered HTML from Quill/Markdown) */
+.content-body blockquote,
+.prose blockquote,
+article blockquote,
+.ql-editor blockquote {
+  border-left: 4px solid var(--primary);
+  background-color: rgba(0, 169, 157, 0.05);
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  font-style: italic;
+  color: var(--text-light);
+  border-radius: 0 4px 4px 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.content-body blockquote p,
+.prose blockquote p,
+article blockquote p,
+.ql-editor blockquote p {
+  margin-bottom: 0;
 }

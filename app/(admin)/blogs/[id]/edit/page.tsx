@@ -12,6 +12,8 @@ import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
+import Modal from '@/components/admin/Modal';
+import { AlertTriangle } from 'lucide-react';
 
 export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -20,6 +22,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [formData, setFormData] = useState<BlogFormData>({
         title: '',
         slug: '',
@@ -188,11 +191,12 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
         }
     };
 
-    const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete this blog? This action cannot be undone.')) {
-            return;
-        }
+    const handleDeleteClick = () => {
+        setIsDeleteModalOpen(true);
+    };
 
+    const confirmDelete = async () => {
+        setIsDeleteModalOpen(false);
         const toastId = toast.loading('Deleting blog...');
 
         try {
@@ -231,7 +235,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
                     <button
-                        onClick={handleDelete}
+                        onClick={handleDeleteClick}
                         className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors text-sm sm:text-base"
                     >
                         <Trash2 size={18} />
@@ -402,6 +406,40 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 onConfirm={handleConfirmSubmit}
                 warnings={modalWarnings}
             />
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Delete Blog Post?"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center p-3 bg-red-50 rounded-md border border-red-100">
+                        <AlertTriangle className="text-[#DC3545] mr-3 flex-shrink-0" size={24} />
+                        <p className="text-sm text-red-800">
+                            Warning: This action will move the blog to trash.
+                        </p>
+                    </div>
+                    <p className="text-gray-600">
+                        Are you sure you want to delete <span className="font-semibold text-gray-800">"{formData.title}"</span>?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors flex items-center"
+                        >
+                            <Trash2 size={16} className="mr-2" />
+                            Delete Post
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Briefcase, MapPin, Clock, Power, PowerOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Briefcase, MapPin, Clock, Power, PowerOff, AlertTriangle } from 'lucide-react';
 import { getJobs, toggleJobStatus, deleteJob, Job } from './actions';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import Modal from '@/components/admin/Modal';
 
 export default function CareersPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
@@ -14,6 +15,8 @@ export default function CareersPage() {
     const [locationFilter, setLocationFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [jobToDelete, setJobToDelete] = useState<{ id: string; title: string } | null>(null);
 
     useEffect(() => {
         loadJobs();
@@ -49,18 +52,24 @@ export default function CareersPage() {
         }
     };
 
-    const handleDelete = async (id: string, title: string) => {
-        if (!window.confirm(`Are you sure you want to deactivate "${title}"?`)) {
-            return;
-        }
+    const handleDeleteClick = (id: string, title: string) => {
+        setJobToDelete({ id, title });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!jobToDelete) return;
 
         const toastId = toast.loading('Deactivating job...');
+        setIsDeleteModalOpen(false);
         try {
-            await deleteJob(id);
+            await deleteJob(jobToDelete.id);
             toast.success('Job deactivated successfully', { id: toastId });
             loadJobs();
         } catch (error: any) {
             toast.error(error.message || 'Failed to deactivate job', { id: toastId });
+        } finally {
+            setJobToDelete(null);
         }
     };
 
@@ -242,7 +251,7 @@ export default function CareersPage() {
                                                     <Edit size={18} />
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleDelete(job.id, job.title)}
+                                                    onClick={() => handleDeleteClick(job.id, job.title)}
                                                     className="text-[#DC3545] hover:text-[#DC3545]/90 transition-colors"
                                                     title="Deactivate job"
                                                 >
@@ -257,6 +266,40 @@ export default function CareersPage() {
                     </div>
                 )}
             </div>
+
+            {/* Deactivation Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Deactivate Job Posting?"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center p-3 bg-secondary/10 rounded-md">
+                        <AlertTriangle className="text-secondary mr-3 flex-shrink-0" size={24} />
+                        <p className="text-sm text-secondary">
+                            This will hide the job from the public careers page.
+                        </p>
+                    </div>
+                    <p className="text-gray-600">
+                        Are you sure you want to deactivate <span className="font-semibold text-gray-800">"{jobToDelete?.title}"</span>?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors flex items-center"
+                        >
+                            <Trash2 size={16} className="mr-2" />
+                            Deactivate Job
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -20,12 +20,14 @@ export default function BlogsPage() {
     const [blogToDelete, setBlogToDelete] = useState<{ id: string; title: string } | null>(null);
     const [deleteMode, setDeleteMode] = useState<'soft' | 'permanent'>('soft');
     const [userRole, setUserRole] = useState<string>('');
+    const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [blogToRestore, setBlogToRestore] = useState<{ id: string; title: string } | null>(null);
     const router = useRouter();
 
     useEffect(() => {
         const fetchUser = async () => {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabase.auth.getSession().then(({ data }) => ({ data: { user: data.session?.user } }));
             if (user) {
                 const { data: userData } = await supabase
                     .from('users')
@@ -71,16 +73,24 @@ export default function BlogsPage() {
         setIsDeleteModalOpen(true);
     };
 
-    const handleRestore = async (id: string, title: string) => {
-        if (!window.confirm(`Restore "${title}"?`)) return;
+    const handleRestoreClick = (id: string, title: string) => {
+        setBlogToRestore({ id, title });
+        setIsRestoreModalOpen(true);
+    };
+
+    const confirmRestore = async () => {
+        if (!blogToRestore) return;
 
         const toastId = toast.loading('Restoring blog...');
+        setIsRestoreModalOpen(false);
         try {
-            await restoreBlog(id);
+            await restoreBlog(blogToRestore.id);
             toast.success('Blog restored successfully', { id: toastId });
             loadBlogs();
         } catch (error) {
             toast.error('Failed to restore blog', { id: toastId });
+        } finally {
+            setBlogToRestore(null);
         }
     };
 
@@ -242,7 +252,7 @@ export default function BlogsPage() {
                                                 ) : (
                                                     <>
                                                         <button
-                                                            onClick={() => handleRestore(blog.id, blog.title)}
+                                                            onClick={() => handleRestoreClick(blog.id, blog.title)}
                                                             className="text-[#00A99D] hover:text-[#008F84]"
                                                             title="Restore"
                                                         >
@@ -307,6 +317,40 @@ export default function BlogsPage() {
                     </div>
                 </div>
             </Modal>
-        </div >
+
+            {/* Restore Confirmation Modal */}
+            <Modal
+                isOpen={isRestoreModalOpen}
+                onClose={() => setIsRestoreModalOpen(false)}
+                title="Restore Blog Post?"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center p-3 bg-primary/10 rounded-md">
+                        <RotateCcw className="text-primary mr-3 flex-shrink-0" size={24} />
+                        <p className="text-sm text-primary-dark">
+                            This will move the blog post back to your active list.
+                        </p>
+                    </div>
+                    <p className="text-gray-600">
+                        Restore <span className="font-semibold text-gray-800">"{blogToRestore?.title}"</span> to active status?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setIsRestoreModalOpen(false)}
+                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmRestore}
+                            className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors flex items-center"
+                        >
+                            <RotateCcw size={16} className="mr-2" />
+                            Restore Blog
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+        </div>
     );
 }

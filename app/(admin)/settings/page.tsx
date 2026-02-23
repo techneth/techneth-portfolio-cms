@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Save, Power, PowerOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getSettings, updateSettings, SettingsData } from './actions';
+import Link from 'next/link';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<SettingsData | null>(null);
@@ -174,24 +175,24 @@ export default function SettingsPage() {
             <div className="admin-card p-6 space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800">User Management</h3>
-                    <a
+                    <Link
                         href="/users"
                         className="text-sm text-[#00A99D] hover:text-[#008F84] font-medium"
                     >
                         View All →
-                    </a>
+                    </Link>
                 </div>
 
                 <p className="text-sm text-gray-600">
                     Manage admin users, assign roles, and control access permissions. Only super admins can create, edit, and manage users.
                 </p>
 
-                <a
+                <Link
                     href="/users"
                     className="inline-block px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                 >
                     Manage Users
-                </a>
+                </Link>
             </div>
 
             <div className="flex justify-end">

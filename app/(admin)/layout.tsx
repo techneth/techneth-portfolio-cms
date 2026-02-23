@@ -23,7 +23,7 @@ export default async function AdminLayout({
             <Sidebar user={user} />
 
             <main className="flex-1 lg:ml-64 overflow-y-auto">
-                <div className="p-4 lg:p-8">
+                <div className="p-4 lg:p-8 animate-fadeIn">
                     {children}
                 </div>
             </main>
