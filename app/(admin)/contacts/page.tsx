@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, MailOpen, CheckCircle, Archive, Eye, Send, Phone, Building, Calendar, User as UserIcon, Loader2, X, ArrowLeft } from 'lucide-react';
-import { getContacts, updateContactStatus, replyToContact } from './actions';
+import { Mail, MailOpen, CheckCircle, Archive, Eye, Send, Phone, Building, Calendar, User as UserIcon, Loader2, X, ArrowLeft, Trash2, AlertTriangle } from 'lucide-react';
+import { getContacts, updateContactStatus, replyToContact, deleteContact } from './actions';
+import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
@@ -30,6 +31,25 @@ export default function ContactsPage() {
     const [replySubject, setReplySubject] = useState('');
     const [replyMessage, setReplyMessage] = useState('');
     const [showReplyForm, setShowReplyForm] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+    const [userRole, setUserRole] = useState<string>('');
+
+    useEffect(() => {
+        const fetchUserRole = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getSession().then(({ data }) => ({ data: { user: data.session?.user } }));
+            if (user) {
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+                setUserRole((userData as any)?.role || '');
+            }
+        };
+        fetchUserRole();
+    }, []);
 
     useEffect(() => {
         loadContacts();
@@ -93,6 +113,28 @@ export default function ContactsPage() {
         }
     };
 
+    const handleDeleteClick = (contact: Contact) => {
+        setContactToDelete(contact);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!contactToDelete) return;
+
+        const toastId = toast.loading('Deleting message...');
+        setIsDeleteModalOpen(false);
+
+        try {
+            await deleteContact(contactToDelete.id);
+            toast.success('Message deleted successfully', { id: toastId });
+            loadContacts();
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+            toast.error('Failed to delete message', { id: toastId });
+        } finally {
+            setContactToDelete(null);
+        }
+    };
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -198,13 +240,24 @@ export default function ContactsPage() {
                                             {format(new Date(contact.created_at), 'MMM d, yyyy h:mm a')}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleViewDetails(contact)}
-                                                className="text-primary hover:text-primary-dark transition-colors"
-                                                title="View details"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
+                                            <div className="flex items-center justify-end space-x-3">
+                                                <button
+                                                    onClick={() => handleViewDetails(contact)}
+                                                    className="text-primary hover:text-primary-dark transition-colors"
+                                                    title="View details"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                                {(userRole === 'admin' || userRole === 'super_admin') && (
+                                                    <button
+                                                        onClick={() => handleDeleteClick(contact)}
+                                                        className="text-red-600 hover:text-red-800 transition-colors"
+                                                        title="Delete message"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -392,6 +445,48 @@ export default function ContactsPage() {
                             </div>
                         </div>
                     )}
+                </Modal>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && contactToDelete && (
+                <Modal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => {
+                        setIsDeleteModalOpen(false);
+                        setContactToDelete(null);
+                    }}
+                    title="Delete Contact Message?"
+                >
+                    <div className="space-y-4">
+                        <div className="flex items-center p-3 bg-red-50 rounded-md">
+                            <AlertTriangle className="text-red-600 mr-3 flex-shrink-0" size={24} />
+                            <p className="text-sm text-red-900">
+                                Warning: This action cannot be undone!
+                            </p>
+                        </div>
+                        <p className="text-gray-600">
+                            Are you sure you want to delete the message from <span className="font-semibold text-gray-800">{contactToDelete.name}</span>?
+                        </p>
+                        <div className="flex justify-end space-x-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    setContactToDelete(null);
+                                }}
+                                className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center"
+                            >
+                                <Trash2 size={16} className="mr-2" />
+                                Delete Message
+                            </button>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Star } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -28,6 +28,7 @@ export default function CreateBlogPage() {
         seo_title: '',
         seo_description: '',
         seo_keywords: [],
+        featured: false,
     });
     const [keywordInput, setKeywordInput] = useState('');
     const [editorWarnings, setEditorWarnings] = useState<string[]>([]);
@@ -259,6 +260,27 @@ export default function CreateBlogPage() {
                                 onChange={(value) => setFormData({ ...formData, featured_image: value })}
                                 onUploadFile={(file) => setImageFile(file)}
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Featured Status
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, featured: !formData.featured })}
+                                className={`flex items-center space-x-2 px-4 py-2.5 rounded border transition-all ${formData.featured
+                                        ? 'bg-yellow-50 border-yellow-400 text-yellow-700 shadow-sm ring-1 ring-yellow-400'
+                                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <Star
+                                    size={20}
+                                    fill={formData.featured ? "#EAB308" : "none"}
+                                    className={formData.featured ? 'text-yellow-500' : 'text-gray-400'}
+                                />
+                                <span className="font-bold">{formData.featured ? 'Featured Post' : 'Click to Feature'}</span>
+                            </button>
                         </div>
                     </div>
                 </div>

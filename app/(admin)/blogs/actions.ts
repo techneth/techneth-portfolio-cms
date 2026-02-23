@@ -15,6 +15,7 @@ export interface BlogFormData {
     seo_title: string;
     seo_description: string;
     seo_keywords: string[];
+    featured?: boolean;
 }
 
 export async function createBlog(formData: BlogFormData) {
@@ -149,6 +150,56 @@ export async function deleteBlog(id: string) {
     });
 
     revalidatePath('/blogs');
+}
+
+export async function toggleFeaturedBlog(id: string, featured: boolean) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    // Get blog to check ownership and get title for logging
+    const { data: blog } = await supabase
+        .from('blogs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (!blog) throw new Error('Blog not found');
+
+    if (!canPerformAction(user, 'update', 'blog', blog.created_by)) {
+        throw new Error('Forbidden');
+    }
+
+    // Use admin client to bypass RLS for updates
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
+
+    const { data, error } = await adminClient
+        .from('blogs')
+        .update({
+            featured,
+            updated_by: user.id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'update',
+        resourceType: 'blog',
+        resourceId: id,
+        resourceTitle: blog.title,
+        changes: { featured: { before: !featured, after: featured } }
+    });
+
+    revalidatePath('/blogs');
+    return data;
 }
 
 export async function restoreBlog(id: string) {
