@@ -102,9 +102,9 @@ export default function LogsPage() {
     const totalPages = Math.ceil(totalCount / logsPerPage);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fadeIn">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Activity Logs</h1>
                     <p className="text-gray-600 mt-2">Track all user actions and system changes</p>

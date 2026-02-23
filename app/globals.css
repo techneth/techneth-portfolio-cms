@@ -213,3 +213,25 @@ body {
 .EasyMDEContainer .CodeMirror {
   min-height: 300px;
 }
+/* Global Content Styles (for rendered HTML from Quill/Markdown) */
+.content-body blockquote,
+.prose blockquote,
+article blockquote,
+.ql-editor blockquote {
+  border-left: 4px solid var(--primary);
+  background-color: rgba(0, 169, 157, 0.05);
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  font-style: italic;
+  color: var(--text-light);
+  border-radius: 0 4px 4px 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.content-body blockquote p,
+.prose blockquote p,
+article blockquote p,
+.ql-editor blockquote p {
+  margin-bottom: 0;
+}

@@ -1,10 +1,10 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, phone, company, subject, message } = body;
+        const { name, email, phone, company, service, message, ip_address, user_agent } = body;
 
         // Basic validation
         if (!name || !email || !message) {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const supabase: any = await createServerClient();
+        const supabase: any = createAdminClient();
 
         const { data, error } = await supabase
             .from('contact_submissions')
@@ -24,8 +24,10 @@ export async function POST(request: Request) {
                     email,
                     phone,
                     company,
-                    subject,
-                    message
+                    service,
+                    message,
+                    ip_address,
+                    user_agent
                 } as any
             ])
             .select()
