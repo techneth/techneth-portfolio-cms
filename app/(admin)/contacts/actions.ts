@@ -5,9 +5,8 @@ import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { revalidatePath } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import nodemailer from 'nodemailer';
+import path from 'path';
 
 export async function getContacts(filters?: { status?: string }) {
     const user = await getCurrentUser();
@@ -70,9 +69,7 @@ export async function updateContactStatus(
     const updateData: any = { status };
 
     if (status === 'replied') {
-        updateData.reply_sent_by = user.id;
-        updateData.reply_sent_by_name = user.name;
-        updateData.reply_sent_at = new Date().toISOString();
+        // Additional logic for generating automated notes or other stuff if needed
     }
 
     const { data, error } = await supabase
@@ -158,23 +155,81 @@ export async function replyToContact(id: string, subject: string, message: strin
 
     if (!contact) throw new Error('Contact not found');
 
-    // Send email using Resend if API key is present
-    if (process.env.RESEND_API_KEY) {
-        try {
-            await resend.emails.send({
-                from: 'Techneth <onboarding@resend.dev>', // Should be configured in env
-                to: contact.email,
-                subject: `Re: ${subject}`,
-                html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
-            });
-        } catch (error) {
-            console.error('Failed to send email:', error);
-            throw new Error('Failed to send email');
-        }
-    } else {
-        console.warn('RESEND_API_KEY not found. Simulating email send.');
-        // Simulate delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    // Fetch SMTP configuration from the database
+    const { data: smtpData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'smtp_config')
+        .single();
+
+    let smtpConfig = smtpData?.value;
+
+    // Fallback to hardcoded defaults if not configured
+    if (!smtpConfig) {
+        smtpConfig = {
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+                user: 'dev.techneth@gmail.com',
+                pass: 'vunm bmbt msju xkqd',
+            },
+            fromEmail: '"No Reply Techneth" <dev.techneth@gmail.com>'
+        };
+    }
+
+    // Configure nodemailer transporter
+    const transporter = nodemailer.createTransport({
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: smtpConfig.auth,
+    });
+
+    const htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #0b1120; padding: 20px; text-align: center;">
+            <img src="cid:technethlogo" alt="Techneth Logo" style="max-height: 40px;" />
+        </div>
+        <div style="padding: 30px;">
+            <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                Hi ${contact.name},
+            </p>
+            <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                ${message.replace(/\n/g, '<br>')}
+            </p>
+            <p style="font-size: 16px; line-height: 1.6; color: #555; margin-top: 30px;">
+                Best regards,<br/>
+                <strong>${user.name}</strong><br/>
+                The Techneth Team
+            </p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #888;">
+            &copy; ${new Date().getFullYear()} Techneth. All rights reserved.<br/>
+            <a href="https://techneth.com" style="color: #0056b3; text-decoration: none;">www.techneth.com</a>
+        </div>
+    </div>
+    `;
+
+    const mailOptions = {
+        from: smtpConfig.fromEmail || '"No Reply Techneth" <dev.techneth@gmail.com>',
+        to: contact.email,
+        cc: 'rahat@techneth.com',
+        bcc: 'fahad@techneth.com',
+        subject: `Re: ${subject}`,
+        html: htmlTemplate,
+        attachments: [{
+            filename: 'techneth.png',
+            path: path.join(process.cwd(), 'public', 'techneth.png'),
+            cid: 'technethlogo'
+        }]
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        console.error('Failed to send email via SMTP:', error);
+        throw new Error('Failed to send email');
     }
 
     // Update status to 'replied'
@@ -182,9 +237,7 @@ export async function replyToContact(id: string, subject: string, message: strin
         .from('contact_submissions')
         .update({
             status: 'replied',
-            reply_sent_by: user.id,
-            reply_sent_by_name: user.name,
-            reply_sent_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select()
