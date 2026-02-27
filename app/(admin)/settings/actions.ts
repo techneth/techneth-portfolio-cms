@@ -13,6 +13,16 @@ export interface SettingsData {
     };
     siteName: string;
     contactEmail: string;
+    smtpConfig: {
+        host: string;
+        port: number;
+        secure: boolean;
+        auth: {
+            user: string;
+            pass: string;
+        };
+        fromEmail: string;
+    };
 }
 
 export async function getSettings(): Promise<SettingsData> {
@@ -24,7 +34,7 @@ export async function getSettings(): Promise<SettingsData> {
     const { data, error } = await supabase
         .from('settings')
         .select('*')
-        .in('key', ['maintenance_mode', 'site_name', 'contact_email']);
+        .in('key', ['maintenance_mode', 'site_name', 'contact_email', 'smtp_config']);
 
     if (error) throw error;
 
@@ -35,7 +45,17 @@ export async function getSettings(): Promise<SettingsData> {
             message: 'Site under maintenance'
         },
         siteName: 'Techneth',
-        contactEmail: 'info@techneth.com'
+        contactEmail: 'info@techneth.com',
+        smtpConfig: {
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+                user: '',
+                pass: ''
+            },
+            fromEmail: ''
+        }
     };
 
     data.forEach((setting: any) => {
@@ -48,6 +68,9 @@ export async function getSettings(): Promise<SettingsData> {
                 break;
             case 'contact_email':
                 settings.contactEmail = setting.value.value;
+                break;
+            case 'smtp_config':
+                settings.smtpConfig = setting.value;
                 break;
         }
     });
@@ -140,6 +163,30 @@ export async function updateSettings(
         };
     }
 
+    if (updates.smtpConfig !== undefined && JSON.stringify(updates.smtpConfig) !== JSON.stringify(currentSettings.smtpConfig)) {
+        // Obfuscate passwords in the change log to prevent exposing credentials
+        const safeBefore = { ...currentSettings.smtpConfig };
+        const safeAfter = { ...updates.smtpConfig };
+        if (safeBefore.auth) safeBefore.auth = { ...safeBefore.auth, pass: '***' };
+        if (safeAfter.auth) safeAfter.auth = { ...safeAfter.auth, pass: '***' };
+
+        updatePromises.push(
+            supabase
+                .from('settings')
+                .upsert({
+                    key: 'smtp_config',
+                    value: updates.smtpConfig,
+                    updated_by: user.id,
+                    updated_at: new Date().toISOString()
+                })
+        );
+
+        changes.smtp_config = {
+            before: safeBefore,
+            after: safeAfter
+        };
+    }
+
     // Execute all updates
     const results = await Promise.all(updatePromises);
 
@@ -149,8 +196,8 @@ export async function updateSettings(
         throw new Error('Failed to update settings');
     }
 
-    // Log activity for site_name and contact_email changes
-    if (changes.site_name || changes.contact_email) {
+    // Log activity for site_name, contact_email, and smtp_config changes
+    if (changes.site_name || changes.contact_email || changes.smtp_config) {
         await logActivity({
             userId: user.id,
             userName: user.name,
@@ -161,7 +208,8 @@ export async function updateSettings(
             resourceTitle: 'Site Settings',
             changes: {
                 ...(changes.site_name && { site_name: changes.site_name }),
-                ...(changes.contact_email && { contact_email: changes.contact_email })
+                ...(changes.contact_email && { contact_email: changes.contact_email }),
+                ...(changes.smtp_config && { smtp_config: changes.smtp_config })
             }
         });
     }

@@ -16,7 +16,7 @@ export interface CaseStudyFormData {
     technologies: string[];
     results: Record<string, any>;
     status: 'draft' | 'published';
-    is_featured: boolean;
+    featured: boolean;
     seo_title: string;
     seo_description: string;
 }
@@ -241,6 +241,56 @@ export async function permanentlyDeleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+}
+
+export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    // Get case study to check ownership and title
+    const { data: caseStudy } = await supabase
+        .from('case_studies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (!caseStudy) throw new Error('Case study not found');
+
+    if (!canPerformAction(user, 'update', 'case_study', caseStudy.created_by)) {
+        throw new Error('Forbidden');
+    }
+
+    // Use admin client to bypass RLS for updates
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
+
+    const { data, error } = await adminClient
+        .from('case_studies')
+        .update({
+            featured,
+            updated_by: user.id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'update',
+        resourceType: 'case_study',
+        resourceId: id,
+        resourceTitle: caseStudy.title,
+        changes: { featured: { before: !featured, after: featured } }
+    });
+
+    revalidatePath('/case-studies');
+    return data;
 }
 
 export async function getCaseStudies(filters?: {

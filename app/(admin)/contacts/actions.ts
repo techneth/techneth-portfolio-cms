@@ -206,3 +206,42 @@ export async function replyToContact(id: string, subject: string, message: strin
     revalidatePath('/contacts');
     return data;
 }
+
+export async function deleteContact(id: string) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'admin' && user.role !== 'super_admin' && !canPerformAction(user, 'delete', 'contact'))) {
+        throw new Error('Unauthorized');
+    }
+
+    const { createServerClient, createAdminClient } = await import('@/lib/supabase/server');
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { data: contact } = await supabase
+        .from('contact_submissions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (!contact) throw new Error('Contact not found');
+
+    const adminClient = createAdminClient() as SupabaseClient<any>;
+    const { error } = await adminClient
+        .from('contact_submissions')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'delete',
+        resourceType: 'contact',
+        resourceId: id,
+        resourceTitle: contact.subject || `Message from ${contact.name}`,
+    });
+
+    revalidatePath('/contacts');
+    return { success: true };
+}

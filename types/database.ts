@@ -58,6 +58,7 @@ export interface Database {
                     seo_title: string | null
                     seo_description: string | null
                     seo_keywords: string[] | null
+                    featured: boolean
                     published_at: string | null
                     created_at: string
                     updated_at: string
@@ -78,6 +79,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     seo_keywords?: string[] | null
+                    featured?: boolean
                     published_at?: string | null
                     created_at?: string
                     updated_at?: string
@@ -97,6 +99,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     seo_keywords?: string[] | null
+                    featured?: boolean
                     published_at?: string | null
                     created_at?: string
                     updated_at?: string
@@ -118,7 +121,7 @@ export interface Database {
                     technologies: string[] | null
                     results: Json | null
                     status: 'draft' | 'published'
-                    is_featured: boolean
+                    featured: boolean
                     author_id: string | null
                     author_name: string | null
                     seo_title: string | null
@@ -142,7 +145,7 @@ export interface Database {
                     technologies?: string[] | null
                     results?: Json | null
                     status?: 'draft' | 'published'
-                    is_featured?: boolean
+                    featured?: boolean
                     author_id?: string | null
                     author_name?: string | null
                     seo_title?: string | null
@@ -166,7 +169,7 @@ export interface Database {
                     technologies?: string[] | null
                     results?: Json | null
                     status?: 'draft' | 'published'
-                    is_featured?: boolean
+                    featured?: boolean
                     author_id?: string | null
                     author_name?: string | null
                     seo_title?: string | null

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Eye, Search, AlertTriangle, RotateCcw, Trash } from 'lucide-react';
-import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog } from './actions';
+import { Plus, Edit, Trash2, Eye, Search, AlertTriangle, RotateCcw, Trash, Star } from 'lucide-react';
+import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog, toggleFeaturedBlog } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
@@ -119,6 +119,18 @@ export default function BlogsPage() {
         }
     };
 
+    const handleToggleFeatured = async (id: string, currentStatus: boolean, title: string) => {
+        const toastId = toast.loading(`${currentStatus ? 'Removing' : 'Adding'} featured status...`);
+        try {
+            await toggleFeaturedBlog(id, !currentStatus);
+            toast.success(`Successfully ${currentStatus ? 'removed' : 'added'} featured status`, { id: toastId });
+            loadBlogs();
+        } catch (error) {
+            console.error('Error toggling featured status:', error);
+            toast.error('Failed to update featured status', { id: toastId });
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -218,8 +230,27 @@ export default function BlogsPage() {
                                 {blogs.map((blog) => (
                                     <tr key={blog.id} className="table-row">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-gray-900">{blog.title}</div>
-                                            <div className="text-sm text-gray-500">{blog.slug}</div>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleToggleFeatured(blog.id, blog.featured, blog.title)}
+                                                    className={`transition-colors focus:outline-none ${blog.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                                                    title={blog.featured ? 'Remove from featured' : 'Mark as featured'}
+                                                >
+                                                    <Star size={18} fill={blog.featured ? "currentColor" : "none"} />
+                                                </button>
+                                                <div>
+                                                    <div className="flex items-center">
+                                                        <div className="text-sm font-medium text-gray-900">{blog.title}</div>
+                                                        {blog.featured && (
+                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wider">
+                                                                <Star size={10} className="mr-1" fill="currentColor" />
+                                                                Featured
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">{blog.slug}</div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             {blog.author_name || 'Unknown'}

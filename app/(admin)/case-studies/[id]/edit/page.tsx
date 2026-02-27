@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Trash2, Star } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -35,7 +35,7 @@ export default function EditCaseStudyPage() {
         technologies: [],
         results: {},
         status: 'draft',
-        is_featured: false,
+        featured: false,
         seo_title: '',
         seo_description: '',
     });
@@ -63,8 +63,8 @@ export default function EditCaseStudyPage() {
                 featured_image: data.featured_image || '',
                 technologies: data.technologies || [],
                 results: (data.results as Record<string, any>) || {},
-                status: data.status,
-                is_featured: data.is_featured,
+                status: data.status as 'draft' | 'published',
+                featured: data.featured || false,
                 seo_title: data.seo_title || '',
                 seo_description: data.seo_description || '',
             });
@@ -325,17 +325,25 @@ export default function EditCaseStudyPage() {
                             />
                         </div>
 
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
-                                id="is_featured"
-                                checked={formData.is_featured}
-                                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                                className="w-4 h-4 text-[#00A99D] border-gray-300 rounded focus:ring-[#00A99D]"
-                            />
-                            <label htmlFor="is_featured" className="text-sm font-medium text-gray-700">
-                                Featured Case Study
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Featured Status
                             </label>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, featured: !formData.featured })}
+                                className={`flex items-center space-x-2 px-4 py-2.5 rounded border transition-all ${formData.featured
+                                        ? 'bg-yellow-50 border-yellow-400 text-yellow-700 shadow-sm ring-1 ring-yellow-400'
+                                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <Star
+                                    size={20}
+                                    fill={formData.featured ? "#EAB308" : "none"}
+                                    className={formData.featured ? 'text-yellow-500' : 'text-gray-400'}
+                                />
+                                <span className="font-bold">{formData.featured ? 'Featured Case Study' : 'Click to Feature'}</span>
+                            </button>
                         </div>
                     </div>
                 </div>

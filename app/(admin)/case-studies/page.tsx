@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Edit, Trash2, Star, Search, AlertTriangle, RotateCcw, Trash } from 'lucide-react';
-import { getCaseStudies, deleteCaseStudy, restoreCaseStudy, permanentlyDeleteCaseStudy } from './actions';
+import { getCaseStudies, deleteCaseStudy, restoreCaseStudy, permanentlyDeleteCaseStudy, toggleFeaturedCaseStudy } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
@@ -82,6 +82,18 @@ export default function CaseStudiesPage() {
             toast.error('Failed to delete case study', { id: toastId });
         } finally {
             setCsToDelete(null);
+        }
+    };
+
+    const handleToggleFeatured = async (id: string, currentStatus: boolean, title: string) => {
+        const toastId = toast.loading(`${currentStatus ? 'Removing' : 'Adding'} featured status...`);
+        try {
+            await toggleFeaturedCaseStudy(id, !currentStatus);
+            toast.success(`Successfully ${currentStatus ? 'removed' : 'added'} featured status`, { id: toastId });
+            loadCaseStudies();
+        } catch (error) {
+            console.error('Error toggling featured status:', error);
+            toast.error('Failed to update featured status', { id: toastId });
         }
     };
 
@@ -174,11 +186,23 @@ export default function CaseStudiesPage() {
                                     <tr key={cs.id} className="table-row">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-2">
-                                                {cs.is_featured && (
-                                                    <Star className="text-primary" size={16} fill="currentColor" />
-                                                )}
+                                                <button
+                                                    onClick={() => handleToggleFeatured(cs.id, cs.featured, cs.title)}
+                                                    className={`transition-colors focus:outline-none ${cs.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                                                    title={cs.featured ? 'Remove from featured' : 'Mark as featured'}
+                                                >
+                                                    <Star size={18} fill={cs.featured ? "currentColor" : "none"} />
+                                                </button>
                                                 <div>
-                                                    <div className="text-sm font-medium text-gray-900">{cs.title}</div>
+                                                    <div className="flex items-center">
+                                                        <div className="text-sm font-medium text-gray-900">{cs.title}</div>
+                                                        {cs.featured && (
+                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wider">
+                                                                <Star size={10} className="mr-1" fill="currentColor" />
+                                                                Featured
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="text-sm text-gray-500">{cs.slug}</div>
                                                 </div>
                                             </div>
