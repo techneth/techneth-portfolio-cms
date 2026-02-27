@@ -18,6 +18,94 @@ export async function POST(request: Request) {
 
         const supabase: any = createAdminClient();
 
+        // Fetch SMTP configuration from the database
+        const { data: smtpData } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'smtp_config')
+            .single();
+
+        let smtpConfig = smtpData?.value;
+
+        // Fallback to hardcoded defaults if not configured
+        if (!smtpConfig) {
+            smtpConfig = {
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false,
+                auth: {
+                    user: 'dev.techneth@gmail.com',
+                    pass: 'vunm bmbt msju xkqd',
+                },
+                fromEmail: '"No Reply Techneth" <dev.techneth@gmail.com>'
+            };
+        }
+
+        // Configure nodemailer transporter
+        const transporter = nodemailer.createTransport({
+            host: smtpConfig.host,
+            port: smtpConfig.port,
+            secure: smtpConfig.secure,
+            auth: smtpConfig.auth,
+        });
+
+        // 1. Send Notification to HR
+        const hrHtmlTemplate = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #0b1120; padding: 20px; text-align: center;">
+                <h2 style="color: #fff; margin: 0;">New Contact Submission</h2>
+            </div>
+            <div style="padding: 30px;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px;">
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">Name</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">${name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Email</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="mailto:${email}">${email}</a></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Phone</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">${phone || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Company</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">${company || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Service</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee;">${service || 'General Inquiry'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; vertical-align: top;">Message</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; white-space: pre-wrap;">${message}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #888;">
+                &copy; ${new Date().getFullYear()} Techneth. All rights reserved.
+            </div>
+        </div>
+        `;
+
+        const hrMailOptions = {
+            from: smtpConfig.fromEmail || '"No Reply Techneth" <dev.techneth@gmail.com>',
+            to: 'hr@techneth.com',
+            replyTo: email,
+            subject: `New Contact Submission: ${service || 'General Inquiry'} from ${name}`,
+            html: hrHtmlTemplate
+        };
+
+        try {
+            await transporter.sendMail(hrMailOptions);
+        } catch (mailError) {
+            console.error('Error sending HR notification email:', mailError);
+            // Optionally, we could return an error here if emailing HR is strictly required to pass.
+            // For now, we continue to save to the database even if the email fails.
+        }
+
+        // 2. Save submission to Database
         const { data, error } = await supabase
             .from('contact_submissions')
             .insert([
@@ -44,37 +132,8 @@ export async function POST(request: Request) {
         }
 
         // Fetch SMTP configuration from the database
-        const { data: smtpData } = await supabase
-            .from('settings')
-            .select('value')
-            .eq('key', 'smtp_config')
-            .single();
-
-        let smtpConfig = smtpData?.value;
-
-        // Fallback to hardcoded defaults if not configured
-        if (!smtpConfig) {
-            smtpConfig = {
-                host: 'smtp.gmail.com',
-                port: 587,
-                secure: false,
-                auth: {
-                    user: 'dev.techneth@gmail.com',
-                    pass: 'vunm bmbt msju xkqd',
-                },
-                fromEmail: '"No Reply Techneth" <dev.techneth@gmail.com>'
-            };
-        }
-
-        // Send auto-reply email to the user
-        const transporter = nodemailer.createTransport({
-            host: smtpConfig.host,
-            port: smtpConfig.port,
-            secure: smtpConfig.secure,
-            auth: smtpConfig.auth,
-        });
-
-        const htmlTemplate = `
+        // 3. Send Auto-Reply to User
+        const userHtmlTemplate = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
             <div style="background-color: #0b1120; padding: 20px; text-align: center;">
                 <img src="cid:technethlogo" alt="Techneth Logo" style="max-height: 40px;" />
@@ -113,11 +172,11 @@ export async function POST(request: Request) {
         </div>
         `;
 
-        const mailOptions = {
+        const userMailOptions = {
             from: smtpConfig.fromEmail || '"No Reply Techneth" <dev.techneth@gmail.com>',
             to: email,
             subject: 'Thank you for contacting Techneth',
-            html: htmlTemplate,
+            html: userHtmlTemplate,
             attachments: [{
                 filename: 'techneth.png',
                 path: path.join(process.cwd(), 'public', 'techneth.png'),
@@ -126,7 +185,7 @@ export async function POST(request: Request) {
         };
 
         try {
-            await transporter.sendMail(mailOptions);
+            await transporter.sendMail(userMailOptions);
         } catch (mailError) {
             console.error('Error sending auto-reply email:', mailError);
         }
