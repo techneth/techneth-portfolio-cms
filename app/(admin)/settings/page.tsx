@@ -53,6 +53,11 @@ export default function SettingsPage() {
             hasChanges = true;
         }
 
+        if (JSON.stringify(settings.smtpConfig) !== JSON.stringify(initialSettings.smtpConfig)) {
+            updates.smtpConfig = settings.smtpConfig;
+            hasChanges = true;
+        }
+
         if (!hasChanges) {
             toast('No changes to save', { icon: 'ℹ️' });
             return;
@@ -167,6 +172,118 @@ export default function SettingsPage() {
                         value={settings.contactEmail}
                         onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
                         className="input-field max-w-md"
+                    />
+                </div>
+            </div>
+
+            {/* SMTP Settings */}
+            <div className="admin-card p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">SMTP Configuration</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                    Configure the email server used for sending automated replies and notifications.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            SMTP Host
+                        </label>
+                        <input
+                            type="text"
+                            value={settings.smtpConfig?.host || ''}
+                            onChange={(e) => setSettings({
+                                ...settings,
+                                smtpConfig: { ...settings.smtpConfig, host: e.target.value }
+                            })}
+                            className="input-field w-full"
+                            placeholder="e.g., smtp.gmail.com"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            SMTP Port
+                        </label>
+                        <input
+                            type="number"
+                            value={settings.smtpConfig?.port || ''}
+                            onChange={(e) => setSettings({
+                                ...settings,
+                                smtpConfig: { ...settings.smtpConfig, port: parseInt(e.target.value) || 0 }
+                            })}
+                            className="input-field w-full"
+                            placeholder="e.g., 587"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center space-x-2 mt-2">
+                    <input
+                        type="checkbox"
+                        id="smtpSecure"
+                        checked={settings.smtpConfig?.secure || false}
+                        onChange={(e) => setSettings({
+                            ...settings,
+                            smtpConfig: { ...settings.smtpConfig, secure: e.target.checked }
+                        })}
+                        className="w-4 h-4 text-[#00A99D] rounded border-gray-300 focus:ring-[#00A99D]"
+                    />
+                    <label htmlFor="smtpSecure" className="text-sm font-medium text-gray-700">
+                        Use Secure Connection (SSL/TLS - typically true for port 465, false for 587)
+                    </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Auth Username / Email
+                        </label>
+                        <input
+                            type="text"
+                            value={settings.smtpConfig?.auth?.user || ''}
+                            onChange={(e) => setSettings({
+                                ...settings,
+                                smtpConfig: {
+                                    ...settings.smtpConfig,
+                                    auth: { ...settings.smtpConfig.auth, user: e.target.value }
+                                }
+                            })}
+                            className="input-field w-full"
+                            placeholder="Email address"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Auth Password / App Password
+                        </label>
+                        <input
+                            type="password"
+                            value={settings.smtpConfig?.auth?.pass || ''}
+                            onChange={(e) => setSettings({
+                                ...settings,
+                                smtpConfig: {
+                                    ...settings.smtpConfig,
+                                    auth: { ...settings.smtpConfig.auth, pass: e.target.value }
+                                }
+                            })}
+                            className="input-field w-full"
+                            placeholder="Password"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        From Email Address (Sender Format)
+                    </label>
+                    <input
+                        type="text"
+                        value={settings.smtpConfig?.fromEmail || ''}
+                        onChange={(e) => setSettings({
+                            ...settings,
+                            smtpConfig: { ...settings.smtpConfig, fromEmail: e.target.value }
+                        })}
+                        className="input-field max-w-md"
+                        placeholder='e.g., "From Techneth" <noreply@techneth.com>'
                     />
                 </div>
             </div>
