@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { AlignLeft, AlignCenter, AlignRight, Maximize } from 'lucide-react';
 
 // 1. CSS is safe to import at the top
 import 'react-quill-new/dist/quill.snow.css';
 
 // 2. Import the component dynamically
-const ReactQuill = dynamic(() => import('react-quill-new'), { 
+const ReactQuill = dynamic(() => import('react-quill-new'), {
     ssr: false,
     loading: () => <div className="h-96 bg-gray-50 border rounded-lg animate-pulse" />
 });
@@ -21,28 +20,25 @@ export default function QuillEditor({
     seoKeywords = [],
     onValidationCheck
 }: any) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const quillRef = useRef<any>(null);
-    
     // --- THE HYDRATION FIX ---
     // This state ensures the "real" editor only renders AFTER the initial hydration
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
-        
+
         // 3. Register Quill Modules ONLY after mounting on client
         const initQuill = async () => {
             const { Quill } = await import('react-quill-new');
-            
+
             // Check if already registered to prevent HMR errors
             if (!Quill.imports['formats/image']) {
-                const Image = Quill.import('formats/image');
+                const Image = Quill.import('formats/image') as any;
                 const originalSanitize = Image.sanitize;
                 Image.sanitize = function (url: string) {
                     if (!url) return '';
                     const protocol = url.slice(0, url.indexOf(':'));
-                    return (['http', 'https', 'data', 'blob'].indexOf(protocol) > -1) 
+                    return (['http', 'https', 'data', 'blob'].indexOf(protocol) > -1)
                         ? url : originalSanitize(url);
                 };
                 Quill.register(Image, true);
@@ -78,29 +74,16 @@ export default function QuillEditor({
     }
 
     return (
-        <div className="markdown-editor-wrapper relative text-black" suppressHydrationWarning>
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && onImageSelect) onImageSelect(file);
-                }}
+        <div className="bg-white rounded-lg overflow-hidden border">
+            <ReactQuill
+                theme="snow"
+                value={value}
+                onChange={onChange}
+                modules={modules}
+                placeholder={placeholder || 'Write your content...'}
+                className="h-96 mb-12"
             />
-            
-            <div className="bg-white rounded-lg overflow-hidden border">
-                <ReactQuill
-                    ref={quillRef}
-                    theme="snow"
-                    value={value}
-                    onChange={onChange}
-                    modules={modules}
-                    placeholder={placeholder || 'Write your content...'}
-                    className="h-96 mb-12"
-                />
-            </div>
         </div>
+
     );
 }
