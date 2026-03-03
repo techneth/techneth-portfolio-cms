@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 
 export interface CaseStudyFormData {
     title: string;
@@ -67,7 +67,7 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
 
     const { data: existing } = await supabase
         .from('case_studies')
-        .select('*')
+        .select('id, created_by, published_at')
         .eq('id', id)
         .single();
 
@@ -119,7 +119,7 @@ export async function deleteCaseStudy(id: string) {
     // Get case study for ownership check
     const { data: caseStudy } = await supabase
         .from('case_studies')
-        .select('*')
+        .select('id, title, created_by')
         .eq('id', id)
         .single();
 
@@ -253,7 +253,7 @@ export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
     // Get case study to check ownership and title
     const { data: caseStudy } = await supabase
         .from('case_studies')
-        .select('*')
+        .select('id, title, created_by')
         .eq('id', id)
         .single();
 
@@ -304,40 +304,42 @@ export async function getCaseStudies(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    let query = supabase
-        .from('case_studies')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const cacheKey = [
+        'case-studies-list',
+        filters?.status ?? 'all',
+        filters?.search ?? '',
+        filters?.deleted ? 'trash' : 'active',
+        user.role,
+    ];
 
-    // Handle deleted items filter
-    if (filters?.deleted) {
-        if (user.role !== 'super_admin') {
-            return []; // Only super admins can see deleted items
-        }
-        query = query.not('deleted_at', 'is', null);
-    } else {
-        // Default behavior: show only non-deleted items
-        query = query.is('deleted_at', null);
-    }
+    const fetchCaseStudies = unstable_cache(
+        async () => {
+            let query = supabase
+                .from('case_studies')
+                .select('id, title, slug, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+                .order('created_at', { ascending: false });
 
-    if (filters?.status) {
-        query = query.eq('status', filters.status);
-    }
+            if (filters?.deleted) {
+                if (user.role !== 'super_admin') return [];
+                query = query.not('deleted_at', 'is', null);
+            } else {
+                query = query.is('deleted_at', null);
+            }
 
-    if (filters?.search) {
-        query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
-    }
+            if (filters?.status) query = query.eq('status', filters.status);
+            if (filters?.search) {
+                query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
+            }
 
-    // Editors can now see all case studies to collaborate
-    // if (user.role === 'editor') {
-    //     query = query.eq('created_by', user.id);
-    // }
+            const { data, error } = await query;
+            if (error) throw error;
+            return data ?? [];
+        },
+        cacheKey,
+        { tags: ['case-studies'], revalidate: 60 }
+    );
 
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return data;
+    return fetchCaseStudies();
 }
 
 import { SupabaseClient } from '@supabase/supabase-js';

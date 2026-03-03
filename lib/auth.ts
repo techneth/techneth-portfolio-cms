@@ -1,5 +1,6 @@
 import { createServerClient } from './supabase/server';
 import { Database } from '@/types/database';
+import { cache } from 'react';
 
 export type UserRole = 'super_admin' | 'admin' | 'editor';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
@@ -14,10 +15,11 @@ export interface AuthUser {
 }
 
 /**
- * Get the current authenticated user with role information
- * Simplified version that doesn't query users table (to avoid RLS issues)
+ * Get the current authenticated user with role information.
+ * Wrapped with React cache() to deduplicate within a single request cycle —
+ * multiple calls (e.g. in layout + page + actions) only hit Supabase once.
  */
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
     const supabase = await createServerClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -58,7 +60,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         avatar_url: userData.avatar_url,
         status: (userData.status as UserStatus) || 'approved',
     };
-}
+});
 
 /**
  * Check if user has required role
