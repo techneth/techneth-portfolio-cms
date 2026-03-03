@@ -19,6 +19,7 @@ export interface CaseStudyFormData {
     featured: boolean;
     seo_title: string;
     seo_description: string;
+    is_english: boolean;
 }
 
 export async function createCaseStudy(formData: CaseStudyFormData) {

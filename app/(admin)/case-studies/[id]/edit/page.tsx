@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Trash2, Star } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Trash2, Star, Globe } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -38,6 +38,7 @@ export default function EditCaseStudyPage() {
         featured: false,
         seo_title: '',
         seo_description: '',
+        is_english: false,
     });
     const [techInput, setTechInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
@@ -67,6 +68,7 @@ export default function EditCaseStudyPage() {
                 featured: data.featured || false,
                 seo_title: data.seo_title || '',
                 seo_description: data.seo_description || '',
+                is_english: data.is_english ?? false,
             });
         } catch (error) {
             console.error('Error loading case study:', error);
@@ -325,25 +327,47 @@ export default function EditCaseStudyPage() {
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Featured Status
-                            </label>
-                            <button
-                                type="button"
-                                onClick={() => setFormData({ ...formData, featured: !formData.featured })}
-                                className={`flex items-center space-x-2 px-4 py-2.5 rounded border transition-all ${formData.featured
-                                        ? 'bg-yellow-50 border-yellow-400 text-yellow-700 shadow-sm ring-1 ring-yellow-400'
+                        <div className="flex flex-wrap gap-4">
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Featured Status
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, featured: !formData.featured })}
+                                    className={`flex items-center space-x-2 px-4 py-2.5 rounded border transition-all w-full justify-center sm:justify-start ${formData.featured
+                                        ? 'bg-[#00A99D]/10 border-[#00A99D] text-[#008F84] shadow-sm ring-1 ring-[#00A99D]'
                                         : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <Star
-                                    size={20}
-                                    fill={formData.featured ? "#EAB308" : "none"}
-                                    className={formData.featured ? 'text-yellow-500' : 'text-gray-400'}
-                                />
-                                <span className="font-bold">{formData.featured ? 'Featured Case Study' : 'Click to Feature'}</span>
-                            </button>
+                                        }`}
+                                >
+                                    <Star
+                                        size={20}
+                                        fill={formData.featured ? "#00A99D" : "none"}
+                                        className={formData.featured ? 'text-[#00A99D]' : 'text-gray-400'}
+                                    />
+                                    <span className="font-bold">{formData.featured ? 'Featured Post' : 'Click to Feature'}</span>
+                                </button>
+                            </div>
+
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Language
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, is_english: !formData.is_english })}
+                                    className={`flex items-center space-x-2 px-4 py-2.5 rounded border transition-all w-full justify-center sm:justify-start ${formData.is_english
+                                        ? 'bg-[#00A99D]/10 border-[#00A99D] text-[#008F84] shadow-sm ring-1 ring-[#00A99D]'
+                                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    <Globe
+                                        size={20}
+                                        className={formData.is_english ? 'text-[#00A99D]' : 'text-gray-400'}
+                                    />
+                                    <span className="font-bold">{formData.is_english ? 'English' : 'Non-English'}</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

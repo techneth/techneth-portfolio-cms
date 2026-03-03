@@ -15,6 +15,7 @@ interface Contact {
     phone: string | null;
     company: string | null;
     subject: string | null;
+    service: string | null;
     message: string;
     status: string;
     priority: string;
@@ -217,7 +218,9 @@ export default function ContactsPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-900">{contact.subject || 'No subject'}</div>
+                                            <div className="text-sm font-semibold text-gray-900">
+                                                {contact.subject || (contact.service ? `Inquiry: ${contact.service}` : 'General Inquiry')}
+                                            </div>
                                             <div className="text-sm text-gray-500 truncate max-w-md">{contact.message}</div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -394,11 +397,21 @@ export default function ContactsPage() {
                                 </div>
                             </div>
 
+                            {/* Service */}
+                            {selectedContact.service && (
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Service Requested</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedContact.service}</p>
+                                </div>
+                            )}
+
                             {/* Subject */}
-                            {selectedContact.subject && (
+                            {(selectedContact.subject || selectedContact.service) && (
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Subject</p>
-                                    <p className="text-sm font-medium text-gray-900">{selectedContact.subject}</p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {selectedContact.subject || `Inquiry: ${selectedContact.service}`}
+                                    </p>
                                 </div>
                             )}
 

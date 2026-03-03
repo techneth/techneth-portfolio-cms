@@ -16,6 +16,7 @@ export interface BlogFormData {
     seo_description: string;
     seo_keywords: string[];
     featured?: boolean;
+    is_english: boolean;
 }
 
 export async function createBlog(formData: BlogFormData) {

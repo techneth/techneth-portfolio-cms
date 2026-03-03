@@ -115,6 +115,7 @@ export async function POST(request: Request) {
                     phone,
                     company,
                     service,
+                    subject: service ? `Request for ${service}` : `General Inquiry from ${name}`,
                     message,
                     ip_address,
                     user_agent
@@ -135,11 +136,11 @@ export async function POST(request: Request) {
         // 3. Send Auto-Reply to User
         const userHtmlTemplate = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #0b1120; padding: 20px; text-align: center;">
+            <div style="background-color: #f7f8fbff; padding: 20px; text-align: center;">
                 <img src="cid:technethlogo" alt="Techneth Logo" style="max-height: 40px;" />
             </div>
             <div style="padding: 30px;">
-                <h2 style="color: #0b1120; font-size: 24px; margin-bottom: 20px;">Thank you for reaching out!</h2>
+                <h2 style="color: #111315ff; font-size: 24px; margin-bottom: 20px;">Thank you for reaching out!</h2>
                 <p style="font-size: 16px; line-height: 1.6; color: #555;">
                     Hi ${name},
                 </p>

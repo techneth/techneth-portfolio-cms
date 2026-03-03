@@ -60,6 +60,7 @@ export interface Database {
                     seo_keywords: string[] | null
                     featured: boolean
                     published_at: string | null
+                    is_english: boolean | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
@@ -81,6 +82,7 @@ export interface Database {
                     seo_keywords?: string[] | null
                     featured?: boolean
                     published_at?: string | null
+                    is_english?: boolean | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -101,6 +103,7 @@ export interface Database {
                     seo_keywords?: string[] | null
                     featured?: boolean
                     published_at?: string | null
+                    is_english?: boolean | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -127,6 +130,7 @@ export interface Database {
                     seo_title: string | null
                     seo_description: string | null
                     published_at: string | null
+                    is_english: boolean | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
@@ -151,6 +155,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     published_at?: string | null
+                    is_english?: boolean | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -175,6 +180,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     published_at?: string | null
+                    is_english?: boolean | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null

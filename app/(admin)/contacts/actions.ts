@@ -187,8 +187,8 @@ export async function replyToContact(id: string, subject: string, message: strin
     });
 
     const htmlTemplate = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-        <div style="background-color: #0b1120; padding: 20px; text-align: center;">
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #fffbfbff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #000307ff; padding: 20px; text-align: center;">
             <img src="cid:technethlogo" alt="Techneth Logo" style="max-height: 40px;" />
         </div>
         <div style="padding: 30px;">
