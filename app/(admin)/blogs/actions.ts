@@ -15,8 +15,10 @@ export interface BlogFormData {
     seo_title: string;
     seo_description: string;
     seo_keywords: string[];
+    category: string;
     featured?: boolean;
     is_english: boolean;
+    author_name?: string;
 }
 
 export async function createBlog(formData: BlogFormData) {
@@ -32,7 +34,7 @@ export async function createBlog(formData: BlogFormData) {
         .insert({
             ...formData,
             author_id: user.id,
-            author_name: user.name,
+            author_name: formData.author_name || user.name,
             created_by: user.id,
             updated_by: user.id,
             published_at: formData.status === 'published' ? new Date().toISOString() : null,
@@ -319,7 +321,7 @@ export async function getBlogs(filters?: {
         async () => {
             let query = supabase
                 .from('blogs')
-                .select('id, title, slug, author_name, status, featured, is_english, created_at, created_by, deleted_at')
+                .select('id, title, slug, author_name, status, category, featured, is_english, created_at, created_by, deleted_at')
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {

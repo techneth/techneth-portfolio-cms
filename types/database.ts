@@ -58,6 +58,7 @@ export interface Database {
                     seo_title: string | null
                     seo_description: string | null
                     seo_keywords: string[] | null
+                    category: string | null
                     featured: boolean
                     published_at: string | null
                     is_english: boolean | null
@@ -80,6 +81,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     seo_keywords?: string[] | null
+                    category?: string | null
                     featured?: boolean
                     published_at?: string | null
                     is_english?: boolean | null
@@ -101,6 +103,7 @@ export interface Database {
                     seo_title?: string | null
                     seo_description?: string | null
                     seo_keywords?: string[] | null
+                    category?: string | null
                     featured?: boolean
                     published_at?: string | null
                     is_english?: boolean | null

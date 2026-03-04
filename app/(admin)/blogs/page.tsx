@@ -216,6 +216,9 @@ export default function BlogsPage() {
                                         Author
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Category
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -254,6 +257,9 @@ export default function BlogsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             {blog.author_name || 'Unknown'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            {blog.category || 'Uncategorized'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published' ? 'bg-primary/10 text-primary-dark' : 'bg-secondary/10 text-secondary'}`}>
