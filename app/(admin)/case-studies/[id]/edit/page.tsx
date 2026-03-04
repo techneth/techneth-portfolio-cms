@@ -329,7 +329,7 @@ export default function EditCaseStudyPage() {
                                 <option value="Custom Web Development">Custom Web Development</option>
                                 <option value="Mobile App Development">Mobile App Development</option>
                                 <option value="Product Design">Product Design</option>
-                                <option value="UI/UX Design">UI/UX Design</option>
+                                <option value="UI-UX Design">UI-UX Design</option>
                                 <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
                             </select>
                         </div>
