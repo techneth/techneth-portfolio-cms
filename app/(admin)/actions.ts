@@ -16,17 +16,11 @@ export interface DashboardStats {
 export async function getDashboardStats(): Promise<DashboardStats> {
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    // Get stats from the dashboard_stats view
-    const { data: stats } = await supabase
-        .from('dashboard_stats')
-        .select('*')
-        .single();
-
-    // Get pending users count directly
-    const { count: pendingUsers } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+    // Run both queries in parallel instead of sequentially
+    const [{ data: stats }, { count: pendingUsers }] = await Promise.all([
+        supabase.from('dashboard_stats').select('*').single(),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
 
     if (!stats) {
         return {

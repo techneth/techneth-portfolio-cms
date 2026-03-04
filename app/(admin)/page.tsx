@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 
 export default async function AdminDashboard() {
-    const stats = await getDashboardStats();
-    const recentActivity = await getRecentActivity(5);
-    const user = await getCurrentUser();
+    const [stats, recentActivity, user] = await Promise.all([
+        getDashboardStats(),
+        getRecentActivity(5),
+        getCurrentUser(),
+    ]);
 
     return (
         <div className="space-y-6">

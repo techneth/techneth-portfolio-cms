@@ -28,8 +28,10 @@ export default function CreateBlogPage() {
         seo_title: '',
         seo_description: '',
         seo_keywords: [],
+        category: '',
         featured: false,
         is_english: false,
+        author_name: '',
     });
     const [keywordInput, setKeywordInput] = useState('');
     const [editorWarnings, setEditorWarnings] = useState<string[]>([]);
@@ -238,6 +240,36 @@ export default function CreateBlogPage() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 placeholder="blog-post-slug"
                                 required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Category *
+                            </label>
+                            <select
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
+                                required
+                            >
+                                <option value="" disabled>Select a category</option>
+                                <option value="Custom Web Development">Custom Web Development</option>
+                                <option value="Mobile App Development">Mobile App Development</option>
+                                <option value="Product Design">Product Design</option>
+                                <option value="UI/UX Design">UI/UX Design</option>
+                                <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Author Name
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.author_name || ''}
+                                onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
+                                placeholder="Leave empty to use your name"
                             />
                         </div>
                         <div>
