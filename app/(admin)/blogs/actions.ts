@@ -239,10 +239,11 @@ export async function permanentlyDeleteBlog(id: string) {
     const user = await getCurrentUser();
     if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
 
-    const supabase = (await createServerClient()) as SupabaseClient<any>;
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
 
     // Get the blog first to delete its assets
-    const { data: blog, error: fetchError } = await supabase
+    const { data: blog, error: fetchError } = await adminClient
         .from('blogs')
         .select('*')
         .eq('id', id)
@@ -268,7 +269,7 @@ export async function permanentlyDeleteBlog(id: string) {
 
         const uniquePaths = [...new Set(pathsToDelete)];
         if (uniquePaths.length > 0) {
-            const { error: storageError } = await supabase.storage
+            const { error: storageError } = await adminClient.storage
                 .from(bucket)
                 .remove(uniquePaths);
 
@@ -278,7 +279,7 @@ export async function permanentlyDeleteBlog(id: string) {
         }
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
         .from('blogs')
         .delete()
         .eq('id', id);
