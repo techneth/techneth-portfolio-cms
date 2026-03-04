@@ -126,6 +126,7 @@ export interface Database {
                     gallery: Json | null
                     technologies: string[] | null
                     results: Json | null
+                    keywords: string[] | null
                     status: 'draft' | 'published'
                     featured: boolean
                     author_id: string | null

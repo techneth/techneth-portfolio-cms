@@ -33,6 +33,7 @@ export default function EditCaseStudyPage() {
         content: '',
         featured_image: '',
         technologies: [],
+        keywords: [],
         results: {},
         status: 'draft',
         featured: false,
@@ -41,6 +42,7 @@ export default function EditCaseStudyPage() {
         is_english: false,
     });
     const [techInput, setTechInput] = useState('');
+    const [keywordInput, setKeywordInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
@@ -63,6 +65,7 @@ export default function EditCaseStudyPage() {
                 content: data.content,
                 featured_image: data.featured_image || '',
                 technologies: data.technologies || [],
+                keywords: data.keywords || [],
                 results: (data.results as Record<string, any>) || {},
                 status: data.status as 'draft' | 'published',
                 featured: data.featured || false,
@@ -100,6 +103,23 @@ export default function EditCaseStudyPage() {
         setFormData({
             ...formData,
             technologies: formData.technologies.filter(t => t !== tech),
+        });
+    };
+
+    const addKeyword = () => {
+        if (keywordInput.trim() && !formData.keywords.includes(keywordInput.trim())) {
+            setFormData({
+                ...formData,
+                keywords: [...formData.keywords, keywordInput.trim()],
+            });
+            setKeywordInput('');
+        }
+    };
+
+    const removeKeyword = (keyword: string) => {
+        setFormData({
+            ...formData,
+            keywords: formData.keywords.filter(k => k !== keyword),
         });
     };
 
@@ -416,6 +436,47 @@ export default function EditCaseStudyPage() {
                                         type="button"
                                         onClick={() => removeTechnology(tech)}
                                         className="ml-2 hover:text-red-600"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Keywords */}
+                <div className="admin-card p-4 sm:p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Keywords</h3>
+                    <div className="space-y-3">
+                        <div className="flex space-x-2">
+                            <input
+                                type="text"
+                                value={keywordInput}
+                                onChange={(e) => setKeywordInput(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
+                                placeholder="e.g., UI, Web Design, Startup"
+                            />
+                            <button
+                                type="button"
+                                onClick={addKeyword}
+                                className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
+                            >
+                                Add
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.keywords.map((keyword) => (
+                                <span
+                                    key={keyword}
+                                    className="inline-flex items-center px-3 py-1 bg-[#1E3A8A] text-white rounded-full text-sm"
+                                >
+                                    {keyword}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeKeyword(keyword)}
+                                        className="ml-2 hover:text-red-400 font-bold"
                                     >
                                         ×
                                     </button>

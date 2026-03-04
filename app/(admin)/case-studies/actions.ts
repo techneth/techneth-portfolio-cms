@@ -14,6 +14,7 @@ export interface CaseStudyFormData {
     content: string;
     featured_image: string;
     technologies: string[];
+    keywords: string[];
     results: Record<string, any>;
     status: 'draft' | 'published';
     featured: boolean;
