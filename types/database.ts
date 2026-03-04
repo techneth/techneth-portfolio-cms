@@ -118,6 +118,7 @@ export interface Database {
                     id: string
                     title: string
                     slug: string
+                    category: string | null
                     client_name: string | null
                     industry: string | null
                     excerpt: string | null
@@ -144,6 +145,7 @@ export interface Database {
                     id?: string
                     title: string
                     slug: string
+                    category?: string | null
                     client_name?: string | null
                     industry?: string | null
                     excerpt?: string | null
@@ -151,6 +153,7 @@ export interface Database {
                     featured_image?: string | null
                     gallery?: Json | null
                     technologies?: string[] | null
+                    keywords?: string[] | null
                     results?: Json | null
                     status?: 'draft' | 'published'
                     featured?: boolean
@@ -169,6 +172,7 @@ export interface Database {
                     id?: string
                     title?: string
                     slug?: string
+                    category?: string | null
                     client_name?: string | null
                     industry?: string | null
                     excerpt?: string | null
@@ -176,6 +180,7 @@ export interface Database {
                     featured_image?: string | null
                     gallery?: Json | null
                     technologies?: string[] | null
+                    keywords?: string[] | null
                     results?: Json | null
                     status?: 'draft' | 'published'
                     featured?: boolean

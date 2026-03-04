@@ -8,6 +8,7 @@ import { revalidatePath, unstable_cache } from 'next/cache';
 export interface CaseStudyFormData {
     title: string;
     slug: string;
+    category: string;
     client_name: string;
     industry: string;
     excerpt: string;
@@ -317,7 +318,7 @@ export async function getCaseStudies(filters?: {
         async () => {
             let query = supabase
                 .from('case_studies')
-                .select('id, title, slug, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+                .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {

@@ -84,6 +84,10 @@ export default function CreateBlogPage() {
             toast.error('Please add some content');
             return;
         }
+        if (!formData.featured_image && !imageFile) {
+            toast.error('Please add a featured image');
+            return;
+        }
 
         // SEO Validation
         const seoWarnings: string[] = [];

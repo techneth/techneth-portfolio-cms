@@ -111,6 +111,10 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             toast.error('Please add some content');
             return;
         }
+        if (!formData.featured_image && !imageFile) {
+            toast.error('Please add a featured image');
+            return;
+        }
 
         // SEO Validation
         const seoWarnings: string[] = [];
