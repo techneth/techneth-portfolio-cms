@@ -187,10 +187,11 @@ export async function permanentlyDeleteCaseStudy(id: string) {
     const user = await getCurrentUser();
     if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
 
-    const supabase = (await createServerClient()) as SupabaseClient<any>;
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient() as SupabaseClient<any>;
 
     // Get the case study first to delete its assets
-    const { data: caseStudy, error: fetchError } = await supabase
+    const { data: caseStudy, error: fetchError } = await adminClient
         .from('case_studies')
         .select('*')
         .eq('id', id)
@@ -216,7 +217,7 @@ export async function permanentlyDeleteCaseStudy(id: string) {
 
         const uniquePaths = [...new Set(pathsToDelete)];
         if (uniquePaths.length > 0) {
-            const { error: storageError } = await supabase.storage
+            const { error: storageError } = await adminClient.storage
                 .from(bucket)
                 .remove(uniquePaths);
 
@@ -226,7 +227,7 @@ export async function permanentlyDeleteCaseStudy(id: string) {
         }
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
         .from('case_studies')
         .delete()
         .eq('id', id);
