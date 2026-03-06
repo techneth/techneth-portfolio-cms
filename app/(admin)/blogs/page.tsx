@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Search, AlertTriangle, RotateCcw, Trash, Star, Globe } from 'lucide-react';
-import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog, toggleFeaturedBlog } from './actions';
+import { Plus, Edit, Trash2, Search, AlertTriangle, RotateCcw, Trash, Star, Globe, Link2, Unlink2, X } from 'lucide-react';
+import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog, toggleFeaturedBlog, linkBlogPair, unlinkBlogPair } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
@@ -14,9 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 type Blog = any;
 
 /** Group blogs into EN/NL pairs.
- *  A "pair" is two posts where one has pair_id pointing to the other's id.
- *  Because only the newly-created counterpart stores pair_id, we check both
- *  directions: A→B (A.pair_id === B.id) and B→A (B.pair_id === A.id).
+ *  Checks both directions: A.pair_id===B.id and B.pair_id===A.id.
  */
 function groupByPairId(blogs: Blog[]): Blog[][] {
     const byId = new Map<string, Blog>();
@@ -25,13 +23,10 @@ function groupByPairId(blogs: Blog[]): Blog[][] {
     const visited = new Set<string>();
     const groups: Blog[][] = [];
 
-    // Paired posts first
     for (const b of blogs) {
         if (visited.has(b.id)) continue;
 
-        // Does this post point at another?
         const directPartner = b.pair_id ? byId.get(b.pair_id) : null;
-        // Does any unvisited post point back at this one?
         const reversePartner = !directPartner
             ? blogs.find((x) => x.pair_id === b.id && !visited.has(x.id))
             : null;
@@ -39,20 +34,74 @@ function groupByPairId(blogs: Blog[]): Blog[][] {
         const partner = directPartner ?? reversePartner ?? null;
 
         if (partner && !visited.has(partner.id)) {
-            // Always put English first
             const group = b.is_english ? [b, partner] : [partner, b];
             groups.push(group);
             visited.add(b.id);
             visited.add(partner.id);
         } else if (!partner) {
-            // Solo card — no partner found
             groups.push([b]);
             visited.add(b.id);
         }
-        // If partner was already visited we skip (it was handled in a prior iteration)
     }
 
     return groups;
+}
+
+// ─── Link Picker Modal ───────────────────────────────────────────────────────
+function LinkPickerModal({
+    sourcePost,
+    allBlogs,
+    onLink,
+    onClose,
+}: {
+    sourcePost: Blog;
+    allBlogs: Blog[];
+    onLink: (targetId: string) => void;
+    onClose: () => void;
+}) {
+    // Show unpaired posts of the OPPOSITE language
+    const candidates = allBlogs.filter(
+        (b) =>
+            b.id !== sourcePost.id &&
+            b.is_english !== sourcePost.is_english &&
+            !b.pair_id &&
+            !allBlogs.some((x) => x.pair_id === b.id)
+    );
+
+    return (
+        <Modal isOpen onClose={onClose} title="Link as Translation Pair">
+            <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                    Select a <strong>{sourcePost.is_english ? 'Dutch (NL)' : 'English (EN)'}</strong> blog to pair with{' '}
+                    <span className="font-semibold text-gray-800">"{sourcePost.title}"</span>.
+                </p>
+                {candidates.length === 0 ? (
+                    <div className="p-4 text-center text-gray-400 text-sm border border-dashed rounded-lg">
+                        No unpaired {sourcePost.is_english ? 'Dutch' : 'English'} blogs available.
+                    </div>
+                ) : (
+                    <ul className="divide-y border rounded-lg max-h-64 overflow-y-auto">
+                        {candidates.map((c) => (
+                            <li key={c.id}>
+                                <button
+                                    onClick={() => onLink(c.id)}
+                                    className="w-full text-left px-4 py-3 hover:bg-[#00A99D]/5 transition-colors"
+                                >
+                                    <div className="text-sm font-medium text-gray-900">{c.title}</div>
+                                    <div className="text-xs text-gray-400">{c.slug}</div>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border rounded transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -75,14 +124,17 @@ function LangBadge({ isEnglish }: { isEnglish: boolean }) {
 
 interface CardProps {
     blog: Blog;
+    partner: Blog | null; // the other post in the pair (if any)
     viewFilter: 'active' | 'trash';
     onDelete: (id: string, title: string) => void;
     onPermanentDelete: (id: string, title: string) => void;
     onRestore: (id: string, title: string) => void;
     onToggleFeatured: (id: string, featured: boolean, title: string) => void;
+    onLinkClick: (blog: Blog) => void;
+    onUnlinkClick: (idA: string, idB: string) => void;
 }
 
-function BlogCard({ blog, viewFilter, onDelete, onPermanentDelete, onRestore, onToggleFeatured }: CardProps) {
+function BlogCard({ blog, partner, viewFilter, onDelete, onPermanentDelete, onRestore, onToggleFeatured, onLinkClick, onUnlinkClick }: CardProps) {
     return (
         <div className={`flex-1 min-w-0 rounded-lg border bg-white p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow ${blog.is_english ? 'border-blue-100' : 'border-orange-100'}`}>
             {/* Top row: lang badge + featured star */}
@@ -116,6 +168,24 @@ function BlogCard({ blog, viewFilter, onDelete, onPermanentDelete, onRestore, on
                 <div className="flex items-center gap-2">
                     {viewFilter === 'active' ? (
                         <>
+                            {/* Pair controls — only in active view */}
+                            {partner ? (
+                                <button
+                                    onClick={() => onUnlinkClick(blog.id, partner.id)}
+                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Remove translation pairing"
+                                >
+                                    <Unlink2 size={15} />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => onLinkClick(blog)}
+                                    className="text-gray-400 hover:text-[#00A99D] transition-colors"
+                                    title="Link as translation pair"
+                                >
+                                    <Link2 size={15} />
+                                </button>
+                            )}
                             <Link href={`/blogs/${blog.id}/edit`} className="text-[#00A99D] hover:text-[#008F84]" title="Edit">
                                 <Edit size={16} />
                             </Link>
@@ -149,26 +219,12 @@ export default function BlogsPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [blogToDelete, setBlogToDelete] = useState<{ id: string; title: string } | null>(null);
     const [deleteMode, setDeleteMode] = useState<'soft' | 'permanent'>('soft');
-    const [userRole, setUserRole] = useState<string>('');
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [blogToRestore, setBlogToRestore] = useState<{ id: string; title: string } | null>(null);
+    // Pair/unlink state
+    const [linkSourcePost, setLinkSourcePost] = useState<Blog | null>(null);
+    const [unlinkIds, setUnlinkIds] = useState<{ a: string; b: string } | null>(null);
     const router = useRouter();
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getSession().then(({ data }) => ({ data: { user: data.session?.user } }));
-            if (user) {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-                setUserRole((userData as any)?.role || '');
-            }
-        };
-        fetchUser();
-    }, []);
 
     useEffect(() => { loadBlogs(); }, [statusFilter, searchQuery, viewFilter]);
 
@@ -220,9 +276,8 @@ export default function BlogsPage() {
                 toast.success('Blog moved to trash', { id: toastId });
             }
             loadBlogs();
-        } catch (error) {
-            toast.error('Failed to delete blog', { id: toastId });
-        } finally { setBlogToDelete(null); }
+        } catch { toast.error('Failed to delete blog', { id: toastId }); }
+        finally { setBlogToDelete(null); }
     };
 
     const handleToggleFeatured = async (id: string, currentStatus: boolean, title: string) => {
@@ -234,6 +289,28 @@ export default function BlogsPage() {
         } catch { toast.error('Failed to update featured status', { id: toastId }); }
     };
 
+    const handleLink = async (targetId: string) => {
+        if (!linkSourcePost) return;
+        const toastId = toast.loading('Linking translation pair...');
+        setLinkSourcePost(null);
+        try {
+            await linkBlogPair(linkSourcePost.id, targetId);
+            toast.success('Blogs linked as a translation pair', { id: toastId });
+            loadBlogs();
+        } catch { toast.error('Failed to link blogs', { id: toastId }); }
+    };
+
+    const handleUnlink = async () => {
+        if (!unlinkIds) return;
+        const toastId = toast.loading('Removing pairing...');
+        setUnlinkIds(null);
+        try {
+            await unlinkBlogPair(unlinkIds.a, unlinkIds.b);
+            toast.success('Blogs unlinked', { id: toastId });
+            loadBlogs();
+        } catch { toast.error('Failed to unlink blogs', { id: toastId }); }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -242,44 +319,38 @@ export default function BlogsPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Blogs</h1>
                     <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your blog posts — English &amp; Dutch versions shown side by side</p>
                 </div>
-                <Link
-                    href="/blogs/create"
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors whitespace-nowrap"
-                >
-                    <Plus size={20} />
-                    <span>Create New Blog</span>
-                </Link>
+                <div className="flex gap-2">
+                    <Link
+                        href="/blogs/create-pair"
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-white border border-[#00A99D] text-[#00A99D] rounded hover:bg-[#00A99D]/5 transition-colors whitespace-nowrap"
+                    >
+                        <Globe size={16} />
+                        <span>Create Paired</span>
+                    </Link>
+                    <Link
+                        href="/blogs/create"
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors whitespace-nowrap"
+                    >
+                        <Plus size={20} />
+                        <span>Create New Blog</span>
+                    </Link>
+                </div>
             </div>
 
             {/* View Toggle Tabs */}
             <div className="flex space-x-2">
-                <button
-                    onClick={() => setViewFilter('active')}
-                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'}`}
-                >
+                <button onClick={() => setViewFilter('active')} className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'}`}>
                     Active Blogs
                 </button>
-                <button
-                    onClick={() => setViewFilter('trash')}
-                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash' ? 'bg-[#DC3545] text-white' : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'}`}
-                >
-                    <Trash size={16} />
-                    <span>Trash</span>
+                <button onClick={() => setViewFilter('trash')} className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash' ? 'bg-[#DC3545] text-white' : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'}`}>
+                    <Trash size={16} /><span>Trash</span>
                 </button>
             </div>
 
             {/* Filters */}
             <div className="admin-card p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Search blogs..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="input-field pl-10 w-full"
-                        />
-                    </div>
+                    <input type="text" placeholder="Search blogs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="input-field w-full" />
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field">
                         <option value="">All Status</option>
                         <option value="draft">Draft</option>
@@ -293,54 +364,90 @@ export default function BlogsPage() {
                 {loading ? (
                     <div className="admin-card p-8 text-center text-gray-500">Loading...</div>
                 ) : grouped.length === 0 ? (
-                    <div className="admin-card p-8 text-center text-gray-500">
-                        No blogs found. Create your first blog post!
-                    </div>
+                    <div className="admin-card p-8 text-center text-gray-500">No blogs found. Create your first blog post!</div>
                 ) : (
-                    grouped.map((group) => (
-                        <div
-                            key={group[0].slug}
-                            className="admin-card p-4"
-                        >
-                            {/* Slug header */}
-                            <div className="text-xs font-mono text-gray-400 mb-3 px-1">/{group[0].slug}</div>
-                            {/* Side-by-side cards */}
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                {group.map((blog) => (
-                                    <BlogCard
-                                        key={blog.id}
-                                        blog={blog}
-                                        viewFilter={viewFilter}
-                                        onDelete={handleDeleteClick}
-                                        onPermanentDelete={handlePermanentDeleteClick}
-                                        onRestore={handleRestoreClick}
-                                        onToggleFeatured={handleToggleFeatured}
-                                    />
-                                ))}
-                                {/* Placeholder when only one language exists */}
-                                {group.length === 1 && (
-                                    <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex items-center justify-center text-sm ${group[0].is_english ? 'border-orange-100 text-orange-300' : 'border-blue-100 text-blue-300'}`}>
-                                        <Link
-                                            href={`/blogs/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&author=${encodeURIComponent(group[0].author_name || '')}&category=${encodeURIComponent(group[0].category || '')}`}
-                                            className="flex flex-col items-center gap-1 hover:opacity-75 transition-opacity"
-                                        >
-                                            <Plus size={20} />
-                                            <span className="text-xs">{group[0].is_english ? 'Add Dutch version' : 'Add English version'}</span>
-                                        </Link>
-                                    </div>
-                                )}
+                    grouped.map((group) => {
+                        const isPaired = group.length === 2;
+                        return (
+                            <div key={group[0].id} className="admin-card p-4">
+                                {/* Group header */}
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    {isPaired && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#00A99D] bg-[#00A99D]/10 px-2 py-0.5 rounded-full">
+                                            <Link2 size={10} /> Paired
+                                        </span>
+                                    )}
+                                    <span className="text-xs font-mono text-gray-400">/{group[0].slug}{isPaired ? ` · /${group[1].slug}` : ''}</span>
+                                </div>
+
+                                {/* Side-by-side cards */}
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    {group.map((blog) => (
+                                        <BlogCard
+                                            key={blog.id}
+                                            blog={blog}
+                                            partner={isPaired ? group.find((x) => x.id !== blog.id) ?? null : null}
+                                            viewFilter={viewFilter}
+                                            onDelete={handleDeleteClick}
+                                            onPermanentDelete={handlePermanentDeleteClick}
+                                            onRestore={handleRestoreClick}
+                                            onToggleFeatured={handleToggleFeatured}
+                                            onLinkClick={setLinkSourcePost}
+                                            onUnlinkClick={(a, b) => setUnlinkIds({ a, b })}
+                                        />
+                                    ))}
+                                    {/* Placeholder for missing language */}
+                                    {!isPaired && viewFilter === 'active' && (
+                                        <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex flex-col items-center justify-center gap-2 ${group[0].is_english ? 'border-orange-100' : 'border-blue-100'}`}>
+                                            <p className="text-xs text-gray-400">{group[0].is_english ? 'No Dutch version yet' : 'No English version yet'}</p>
+                                            <div className="flex gap-2">
+                                                <Link
+                                                    href={`/blogs/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&author=${encodeURIComponent(group[0].author_name || '')}&category=${encodeURIComponent(group[0].category || '')}`}
+                                                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                                >
+                                                    <Plus size={12} /> Create
+                                                </Link>
+                                                <button
+                                                    onClick={() => setLinkSourcePost(group[0])}
+                                                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                                >
+                                                    <Link2 size={12} /> Link existing
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
-            {/* Delete Confirmation Modal */}
-            <Modal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                title={deleteMode === 'permanent' ? 'Permanently Delete Blog?' : 'Move Blog to Trash?'}
-            >
+            {/* Link Picker Modal */}
+            {linkSourcePost && (
+                <LinkPickerModal
+                    sourcePost={linkSourcePost}
+                    allBlogs={blogs}
+                    onLink={handleLink}
+                    onClose={() => setLinkSourcePost(null)}
+                />
+            )}
+
+            {/* Unlink Confirmation Modal */}
+            <Modal isOpen={!!unlinkIds} onClose={() => setUnlinkIds(null)} title="Remove Translation Pairing?">
+                <div className="space-y-4">
+                    <p className="text-gray-600 text-sm">These two blogs will be shown as separate items. You can re-link them later.</p>
+                    <div className="flex justify-end space-x-3">
+                        <button onClick={() => setUnlinkIds(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded border border-gray-300 transition-colors">Cancel</button>
+                        <button onClick={handleUnlink} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-2">
+                            <Unlink2 size={15} /> Remove Pairing
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title={deleteMode === 'permanent' ? 'Permanently Delete Blog?' : 'Move Blog to Trash?'}>
                 <div className="space-y-4">
                     <div className="flex items-center p-3 rounded-md" style={{ backgroundColor: deleteMode === 'permanent' ? '#fee' : '#fef3c7' }}>
                         <AlertTriangle className="mr-3 flex-shrink-0" style={{ color: deleteMode === 'permanent' ? '#DC3545' : '#f59e0b' }} size={24} />
@@ -349,20 +456,13 @@ export default function BlogsPage() {
                         </p>
                     </div>
                     <p className="text-gray-600">
-                        {deleteMode === 'permanent' ? (
-                            <>Permanently delete <span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span>? This cannot be undone!</>
-                        ) : (
-                            <>Move <span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span> to trash? You can restore it later.</>
-                        )}
+                        {deleteMode === 'permanent'
+                            ? <><>Permanently delete </><span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span>? This cannot be undone!</>
+                            : <><>Move </><span className="font-semibold text-gray-800">"{blogToDelete?.title}"</span> to trash? You can restore it later.</>}
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">
-                            Cancel
-                        </button>
-                        <button
-                            onClick={confirmDelete}
-                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-[#DC3545] hover:bg-[#DC3545]/90' : 'bg-[#00A99D] hover:bg-[#008F84]'}`}
-                        >
+                        <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">Cancel</button>
+                        <button onClick={confirmDelete} className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-[#DC3545] hover:bg-[#DC3545]/90' : 'bg-[#00A99D] hover:bg-[#008F84]'}`}>
                             <Trash2 size={16} className="mr-2" />
                             {deleteMode === 'permanent' ? 'Permanently Delete' : 'Move to Trash'}
                         </button>
@@ -370,27 +470,18 @@ export default function BlogsPage() {
                 </div>
             </Modal>
 
-            {/* Restore Confirmation Modal */}
-            <Modal
-                isOpen={isRestoreModalOpen}
-                onClose={() => setIsRestoreModalOpen(false)}
-                title="Restore Blog Post?"
-            >
+            {/* Restore Modal */}
+            <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="Restore Blog Post?">
                 <div className="space-y-4">
                     <div className="flex items-center p-3 bg-primary/10 rounded-md">
                         <RotateCcw className="text-primary mr-3 flex-shrink-0" size={24} />
                         <p className="text-sm text-primary-dark">This will move the blog post back to your active list.</p>
                     </div>
-                    <p className="text-gray-600">
-                        Restore <span className="font-semibold text-gray-800">"{blogToRestore?.title}"</span> to active status?
-                    </p>
+                    <p className="text-gray-600">Restore <span className="font-semibold text-gray-800">"{blogToRestore?.title}"</span> to active status?</p>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">
-                            Cancel
-                        </button>
+                        <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">Cancel</button>
                         <button onClick={confirmRestore} className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors flex items-center">
-                            <RotateCcw size={16} className="mr-2" />
-                            Restore Blog
+                            <RotateCcw size={16} className="mr-2" />Restore Blog
                         </button>
                     </div>
                 </div>

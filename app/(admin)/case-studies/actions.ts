@@ -62,6 +62,62 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
     return data;
 }
 
+/** Create an English + Dutch case study together, automatically linked as a pair. */
+export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: CaseStudyFormData) {
+    const user = await getCurrentUser();
+    if (!user || !canPerformAction(user, 'create', 'case_study')) throw new Error('Unauthorized');
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { data: enData, error: enError } = await supabase
+        .from('case_studies')
+        .insert({ ...enForm, is_english: true, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
+        .select().single();
+    if (enError) throw enError;
+
+    const { data: nlData, error: nlError } = await supabase
+        .from('case_studies')
+        .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
+        .select().single();
+    if (nlError) throw nlError;
+
+    await supabase.from('case_studies').update({ pair_id: enData.id }).eq('id', enData.id);
+
+    revalidatePath('/case-studies');
+    return { en: enData, nl: nlData };
+}
+
+/** Link two existing case studies as a translation pair. Both get the same pair_id. */
+export async function linkCaseStudyPair(idA: string, idB: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { error } = await supabase
+        .from('case_studies')
+        .update({ pair_id: idA, updated_by: user.id })
+        .in('id', [idA, idB]);
+
+    if (error) throw error;
+    revalidatePath('/case-studies');
+}
+
+/** Remove the translation pairing from both posts. */
+export async function unlinkCaseStudyPair(idA: string, idB: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { error } = await supabase
+        .from('case_studies')
+        .update({ pair_id: null, updated_by: user.id })
+        .in('id', [idA, idB]);
+
+    if (error) throw error;
+    revalidatePath('/case-studies');
+}
+
 export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
