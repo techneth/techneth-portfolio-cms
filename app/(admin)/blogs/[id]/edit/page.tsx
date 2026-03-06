@@ -153,8 +153,9 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             // Upload image if selected
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
+                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+                // Name featured image by slug
+                const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
                 const uploadFormData = new FormData();
@@ -174,7 +175,8 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             const processedContent = await uploadImages(
                 formData.content,
                 'blogs',
-                `blogs/${formData.slug || id}/content`
+                `blogs/${formData.slug || id}/content`,
+                formData.title
             );
 
             await updateBlog(id, {
@@ -314,12 +316,14 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 required
                             >
-                                <option value="" disabled>Select a category</option>
+<option value="" disabled>Select a category</option>
                                 <option value="Custom Web Development">Custom Web Development</option>
                                 <option value="Mobile App Development">Mobile App Development</option>
+                                <option value="Custom Software Development">Custom Software Development</option>
                                 <option value="Product Design">Product Design</option>
                                 <option value="UI-UX Design">UI-UX Design</option>
                                 <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
+                                <option value="Information">Information</option>
                             </select>
                         </div>
                         <div>
@@ -411,6 +415,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_keywords}
                         onValidationCheck={setEditorWarnings}
+                        contentTitle={formData.title}
                     />
                 </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Save, Eye, Star, Globe } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
@@ -15,6 +15,7 @@ import ValidationModal from '@/components/admin/ValidationModal';
 
 export default function CreateBlogPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -30,8 +31,9 @@ export default function CreateBlogPage() {
         seo_keywords: [],
         category: '',
         featured: false,
-        is_english: false,
+        is_english: true,  // default to English
         author_name: '',
+        pair_id: null,
     });
     const [keywordInput, setKeywordInput] = useState('');
     const [editorWarnings, setEditorWarnings] = useState<string[]>([]);
@@ -39,6 +41,23 @@ export default function CreateBlogPage() {
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
     const [pendingEvent, setPendingEvent] = useState<React.FormEvent | null>(null);
+
+    // Pre-fill from query params when creating a counterpart version
+    useEffect(() => {
+        const lang = searchParams.get('lang');        // 'en' or 'nl'
+        const pairId = searchParams.get('pair_id');   // ID of the existing version to pair with
+        const author = searchParams.get('author');    // author_name from existing post
+        const category = searchParams.get('category'); // category from existing post
+        if (lang || pairId || author || category) {
+            setFormData((prev) => ({
+                ...prev,
+                is_english: lang === 'en',
+                pair_id: pairId || null,
+                ...(author ? { author_name: author } : {}),
+                ...(category ? { category } : {}),
+            }));
+        }
+    }, []);
 
     const generateSlug = (title: string) => {
         return title
@@ -127,8 +146,9 @@ export default function CreateBlogPage() {
             // Upload image if selected
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
+                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+                // Name featured image by slug, e.g. "my-blog-post.jpg"
+                const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
                 const uploadFormData = new FormData();
@@ -148,7 +168,8 @@ export default function CreateBlogPage() {
             const processedContent = await uploadImages(
                 formData.content,
                 'blogs',
-                `blogs/${formData.slug || 'uncategorized'}/content`
+                `blogs/${formData.slug || 'uncategorized'}/content`,
+                formData.title
             );
 
             await createBlog({
@@ -356,6 +377,7 @@ export default function CreateBlogPage() {
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_keywords}
                         onValidationCheck={setEditorWarnings}
+                        contentTitle={formData.title}
                     />
                 </div>
 

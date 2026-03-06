@@ -1,15 +1,139 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Star, Search, AlertTriangle, RotateCcw, Trash } from 'lucide-react';
+import { Plus, Edit, Trash2, Star, AlertTriangle, RotateCcw, Trash, Globe } from 'lucide-react';
 import { getCaseStudies, deleteCaseStudy, restoreCaseStudy, permanentlyDeleteCaseStudy, toggleFeaturedCaseStudy } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+type CS = any;
+
+/** Group case studies into EN/NL pairs.
+ *  Because only the newly-created counterpart stores pair_id, we check both
+ *  directions: A.pair_id===B.id and B.pair_id===A.id.
+ */
+function groupByPairId(items: CS[]): CS[][] {
+    const byId = new Map<string, CS>();
+    for (const cs of items) byId.set(cs.id, cs);
+
+    const visited = new Set<string>();
+    const groups: CS[][] = [];
+
+    for (const cs of items) {
+        if (visited.has(cs.id)) continue;
+
+        const directPartner = cs.pair_id ? byId.get(cs.pair_id) : null;
+        const reversePartner = !directPartner
+            ? items.find((x) => x.pair_id === cs.id && !visited.has(x.id))
+            : null;
+
+        const partner = directPartner ?? reversePartner ?? null;
+
+        if (partner && !visited.has(partner.id)) {
+            const group = cs.is_english ? [cs, partner] : [partner, cs];
+            groups.push(group);
+            visited.add(cs.id);
+            visited.add(partner.id);
+        } else if (!partner) {
+            groups.push([cs]);
+            visited.add(cs.id);
+        }
+    }
+
+    return groups;
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${status === 'published' ? 'bg-[#00A99D]/10 text-[#007A73]' : 'bg-gray-100 text-gray-500'}`}>
+            {status}
+        </span>
+    );
+}
+
+function LangBadge({ isEnglish }: { isEnglish: boolean }) {
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${isEnglish ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+            <Globe size={10} />
+            {isEnglish ? 'EN' : 'NL'}
+        </span>
+    );
+}
+
+interface CardProps {
+    cs: CS;
+    viewFilter: 'active' | 'trash';
+    onDelete: (id: string, title: string) => void;
+    onPermanentDelete: (id: string, title: string) => void;
+    onRestore: (id: string, title: string) => void;
+    onToggleFeatured: (id: string, featured: boolean, title: string) => void;
+}
+
+function CaseStudyCard({ cs, viewFilter, onDelete, onPermanentDelete, onRestore, onToggleFeatured }: CardProps) {
+    return (
+        <div className={`flex-1 min-w-0 rounded-lg border bg-white p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow ${cs.is_english ? 'border-blue-100' : 'border-orange-100'}`}>
+            {/* Top row: lang badge + featured star */}
+            <div className="flex items-center justify-between">
+                <LangBadge isEnglish={cs.is_english} />
+                <button
+                    onClick={() => onToggleFeatured(cs.id, cs.featured, cs.title)}
+                    className={`transition-colors focus:outline-none ${cs.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                    title={cs.featured ? 'Remove featured' : 'Mark as featured'}
+                >
+                    <Star size={16} fill={cs.featured ? 'currentColor' : 'none'} />
+                </button>
+            </div>
+
+            {/* Title */}
+            <div>
+                <div className="text-sm font-semibold text-gray-900 leading-snug">{cs.title}</div>
+                <div className="text-xs text-gray-400 mt-0.5 truncate">{cs.slug}</div>
+            </div>
+
+            {/* Meta */}
+            <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
+                {cs.client_name && <span>{cs.client_name}</span>}
+                {cs.industry && <><span>·</span><span>{cs.industry}</span></>}
+                {cs.category && <><span>·</span><span>{cs.category}</span></>}
+                <span>·</span>
+                <span>{format(new Date(cs.created_at), 'MMM d, yyyy')}</span>
+            </div>
+
+            <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                <StatusBadge status={cs.status} />
+                <div className="flex items-center gap-2">
+                    {viewFilter === 'active' ? (
+                        <>
+                            <Link href={`/case-studies/${cs.id}/edit`} className="text-[#00A99D] hover:text-[#008F84]" title="Edit">
+                                <Edit size={16} />
+                            </Link>
+                            <button onClick={() => onDelete(cs.id, cs.title)} className="text-red-500 hover:text-red-700" title="Move to trash">
+                                <Trash2 size={16} />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={() => onRestore(cs.id, cs.title)} className="text-[#00A99D] hover:text-[#008F84]" title="Restore">
+                                <RotateCcw size={16} />
+                            </button>
+                            <button onClick={() => onPermanentDelete(cs.id, cs.title)} className="text-red-500 hover:text-red-700" title="Permanently delete">
+                                <Trash size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function CaseStudiesPage() {
-    const [caseStudies, setCaseStudies] = useState<any[]>([]);
+    const [caseStudies, setCaseStudies] = useState<CS[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewFilter, setViewFilter] = useState<'active' | 'trash'>('active');
@@ -17,9 +141,7 @@ export default function CaseStudiesPage() {
     const [csToDelete, setCsToDelete] = useState<{ id: string; title: string } | null>(null);
     const [deleteMode, setDeleteMode] = useState<'soft' | 'permanent'>('soft');
 
-    useEffect(() => {
-        loadCaseStudies();
-    }, [searchQuery, viewFilter]);
+    useEffect(() => { loadCaseStudies(); }, [searchQuery, viewFilter]);
 
     const loadCaseStudies = async () => {
         setLoading(true);
@@ -37,17 +159,10 @@ export default function CaseStudiesPage() {
         }
     };
 
-    const handleDeleteClick = (id: string, title: string) => {
-        setCsToDelete({ id, title });
-        setDeleteMode('soft');
-        setIsDeleteModalOpen(true);
-    };
+    const grouped = useMemo(() => groupByPairId(caseStudies), [caseStudies]);
 
-    const handlePermanentDeleteClick = (id: string, title: string) => {
-        setCsToDelete({ id, title });
-        setDeleteMode('permanent');
-        setIsDeleteModalOpen(true);
-    };
+    const handleDeleteClick = (id: string, title: string) => { setCsToDelete({ id, title }); setDeleteMode('soft'); setIsDeleteModalOpen(true); };
+    const handlePermanentDeleteClick = (id: string, title: string) => { setCsToDelete({ id, title }); setDeleteMode('permanent'); setIsDeleteModalOpen(true); };
 
     const handleRestore = async (id: string, title: string) => {
         const toastId = toast.loading('Restoring case study...');
@@ -55,19 +170,13 @@ export default function CaseStudiesPage() {
             await restoreCaseStudy(id);
             toast.success('Case study restored successfully', { id: toastId });
             loadCaseStudies();
-        } catch (error) {
-            toast.error('Failed to restore case study', { id: toastId });
-        }
+        } catch { toast.error('Failed to restore case study', { id: toastId }); }
     };
 
     const confirmDelete = async () => {
         if (!csToDelete) return;
-
-        const toastId = toast.loading(
-            deleteMode === 'permanent' ? 'Permanently deleting case study...' : 'Moving to trash...'
-        );
+        const toastId = toast.loading(deleteMode === 'permanent' ? 'Permanently deleting...' : 'Moving to trash...');
         setIsDeleteModalOpen(false);
-
         try {
             if (deleteMode === 'permanent') {
                 await permanentlyDeleteCaseStudy(csToDelete.id);
@@ -78,11 +187,8 @@ export default function CaseStudiesPage() {
             }
             loadCaseStudies();
         } catch (error) {
-            console.error('Error deleting case study:', error);
             toast.error('Failed to delete case study', { id: toastId });
-        } finally {
-            setCsToDelete(null);
-        }
+        } finally { setCsToDelete(null); }
     };
 
     const handleToggleFeatured = async (id: string, currentStatus: boolean, title: string) => {
@@ -91,10 +197,7 @@ export default function CaseStudiesPage() {
             await toggleFeaturedCaseStudy(id, !currentStatus);
             toast.success(`Successfully ${currentStatus ? 'removed' : 'added'} featured status`, { id: toastId });
             loadCaseStudies();
-        } catch (error) {
-            console.error('Error toggling featured status:', error);
-            toast.error('Failed to update featured status', { id: toastId });
-        }
+        } catch { toast.error('Failed to update featured status', { id: toastId }); }
     };
 
     return (
@@ -103,7 +206,7 @@ export default function CaseStudiesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Case Studies</h1>
-                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your portfolio case studies</p>
+                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your portfolio — English &amp; Dutch versions shown side by side</p>
                 </div>
                 <Link
                     href="/case-studies/create"
@@ -118,19 +221,13 @@ export default function CaseStudiesPage() {
             <div className="flex space-x-2">
                 <button
                     onClick={() => setViewFilter('active')}
-                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active'
-                        ? 'bg-[#00A99D] text-white'
-                        : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'
-                        }`}
+                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'}`}
                 >
                     Active Portfolio
                 </button>
                 <button
                     onClick={() => setViewFilter('trash')}
-                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash'
-                        ? 'bg-[#DC3545] text-white'
-                        : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'
-                        }`}
+                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash' ? 'bg-[#DC3545] text-white' : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'}`}
                 >
                     <Trash size={16} />
                     <span>Trash</span>
@@ -150,116 +247,47 @@ export default function CaseStudiesPage() {
                 </div>
             </div>
 
-            {/* Case Studies Table */}
-            <div className="admin-card overflow-hidden">
+            {/* Card Grid */}
+            <div className="space-y-4">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading...</div>
-                ) : caseStudies.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="admin-card p-8 text-center text-gray-500">Loading...</div>
+                ) : grouped.length === 0 ? (
+                    <div className="admin-card p-8 text-center text-gray-500">
                         No case studies found. Create your first case study!
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px]">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Title
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Client/Industry
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Created
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {caseStudies.map((cs) => (
-                                    <tr key={cs.id} className="table-row">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => handleToggleFeatured(cs.id, cs.featured, cs.title)}
-                                                    className={`transition-colors focus:outline-none ${cs.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
-                                                    title={cs.featured ? 'Remove from featured' : 'Mark as featured'}
-                                                >
-                                                    <Star size={18} fill={cs.featured ? "currentColor" : "none"} />
-                                                </button>
-                                                <div>
-                                                    <div className="flex items-center">
-                                                        <div className="text-sm font-medium text-gray-900">{cs.title}</div>
-                                                        {cs.featured && (
-                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wider">
-                                                                <Star size={10} className="mr-1" fill="currentColor" />
-                                                                Featured
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">{cs.slug}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            <div>{cs.client_name || '-'}</div>
-                                            <div className="text-xs text-gray-500">{cs.industry || '-'}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cs.status === 'published' ? 'bg-primary/10 text-primary-dark' : 'bg-secondary/10 text-secondary'}`}>
-                                                {cs.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                            {format(new Date(cs.created_at), 'MMM d, yyyy')}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-sm font-medium">
-                                            <div className="flex items-center justify-end space-x-3">
-                                                {viewFilter === 'active' ? (
-                                                    <>
-                                                        <Link
-                                                            href={`/case-studies/${cs.id}/edit`}
-                                                            className="text-[#00A99D] hover:text-[#008F84]"
-                                                        >
-                                                            <Edit size={18} />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDeleteClick(cs.id, cs.title)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleRestore(cs.id, cs.title)}
-                                                            className="text-[#00A99D] hover:text-[#008F84]"
-                                                            title="Restore"
-                                                        >
-                                                            <RotateCcw size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handlePermanentDeleteClick(cs.id, cs.title)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                            title="Permanently Delete"
-                                                        >
-                                                            <Trash size={18} />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
+                    grouped.map((group) => (
+                        <div key={group[0].slug} className="admin-card p-4">
+                            {/* Slug header */}
+                            <div className="text-xs font-mono text-gray-400 mb-3 px-1">/{group[0].slug}</div>
+                            {/* Side-by-side cards */}
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                {group.map((cs) => (
+                                    <CaseStudyCard
+                                        key={cs.id}
+                                        cs={cs}
+                                        viewFilter={viewFilter}
+                                        onDelete={handleDeleteClick}
+                                        onPermanentDelete={handlePermanentDeleteClick}
+                                        onRestore={handleRestore}
+                                        onToggleFeatured={handleToggleFeatured}
+                                    />
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                {/* Placeholder when only one language exists */}
+                                {group.length === 1 && (
+                                    <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex items-center justify-center text-sm ${group[0].is_english ? 'border-orange-100 text-orange-300' : 'border-blue-100 text-blue-300'}`}>
+                                        <Link
+                                            href={`/case-studies/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&category=${encodeURIComponent(group[0].category || '')}&client=${encodeURIComponent(group[0].client_name || '')}&industry=${encodeURIComponent(group[0].industry || '')}`}
+                                            className="flex flex-col items-center gap-1 hover:opacity-75 transition-opacity"
+                                        >
+                                            <Plus size={20} />
+                                            <span className="text-xs">{group[0].is_english ? 'Add Dutch version' : 'Add English version'}</span>
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
 
@@ -284,18 +312,12 @@ export default function CaseStudiesPage() {
                         )}
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button
-                            onClick={() => setIsDeleteModalOpen(false)}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
-                        >
+                        <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">
                             Cancel
                         </button>
                         <button
                             onClick={confirmDelete}
-                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent'
-                                ? 'bg-[#DC3545] hover:bg-[#DC3545]/90'
-                                : 'bg-[#00A99D] hover:bg-[#008F84]'
-                                }`}
+                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-[#DC3545] hover:bg-[#DC3545]/90' : 'bg-[#00A99D] hover:bg-[#008F84]'}`}
                         >
                             <Trash2 size={16} className="mr-2" />
                             {deleteMode === 'permanent' ? 'Permanently Delete' : 'Move to Trash'}

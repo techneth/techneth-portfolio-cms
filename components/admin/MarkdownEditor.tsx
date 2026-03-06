@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 // Dynamic import for QuillEditor to avoid SSR issues with Quill/Document
 const QuillEditor = dynamic(() => import('./QuillEditor'), {
     ssr: false,
-    loading: () => <div className="h-96 w-full bg-gray-100 rounded animate-pulse" />
+    loading: () => <div className="h-96 w-full bg-gray-100 rounded animate-pulse" />,
 });
 
 interface MarkdownEditorProps {
@@ -13,6 +13,8 @@ interface MarkdownEditorProps {
     onImageSelect?: (file: File) => string;
     seoKeywords?: string[];
     onValidationCheck?: (warnings: string[]) => void;
+    /** Used to set the alt tag on inserted images: "techneth [title] .ext" */
+    contentTitle?: string;
 }
 
 export default function MarkdownEditor(props: MarkdownEditorProps) {

@@ -22,6 +22,7 @@ export interface CaseStudyFormData {
     seo_title: string;
     seo_description: string;
     is_english: boolean;
+    pair_id?: string | null;
 }
 
 export async function createCaseStudy(formData: CaseStudyFormData) {
@@ -319,7 +320,7 @@ export async function getCaseStudies(filters?: {
         async () => {
             let query = supabase
                 .from('case_studies')
-                .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+                .select('id, title, slug, category, client_name, industry, status, featured, is_english, pair_id, created_at, created_by, deleted_at')
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {
@@ -335,7 +336,20 @@ export async function getCaseStudies(filters?: {
             }
 
             const { data, error } = await query;
-            if (error) throw error;
+            if (error) {
+                // pair_id column may not exist yet — fall back without it
+                const fallbackQuery = supabase
+                    .from('case_studies')
+                    .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+                    .order('created_at', { ascending: false });
+                if (filters?.deleted) fallbackQuery.not('deleted_at', 'is', null);
+                else fallbackQuery.is('deleted_at', null);
+                if (filters?.status) fallbackQuery.eq('status', filters.status);
+                if (filters?.search) fallbackQuery.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
+                const { data: fbData, error: fbError } = await fallbackQuery;
+                if (fbError) throw fbError;
+                return (fbData ?? []).map((cs: any) => ({ ...cs, pair_id: null }));
+            }
             return data ?? [];
         },
         cacheKey,

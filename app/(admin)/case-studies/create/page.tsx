@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Save, Eye, Star, Globe } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
@@ -15,6 +15,7 @@ import ValidationModal from '@/components/admin/ValidationModal';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -34,13 +35,33 @@ export default function CreateCaseStudyPage() {
         featured: false,
         seo_title: '',
         seo_description: '',
-        is_english: false,
+        is_english: true,  // default to English
+        pair_id: null,
     });
     const [techInput, setTechInput] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
+
+    // Pre-fill from query params when creating a counterpart version
+    useEffect(() => {
+        const lang = searchParams.get('lang');         // 'en' or 'nl'
+        const pairId = searchParams.get('pair_id');    // ID of the existing version to pair with
+        const category = searchParams.get('category'); // category from existing post
+        const client = searchParams.get('client');     // client_name from existing post
+        const industry = searchParams.get('industry'); // industry from existing post
+        if (lang || pairId || category || client || industry) {
+            setFormData((prev) => ({
+                ...prev,
+                is_english: lang === 'en',
+                pair_id: pairId || null,
+                ...(category ? { category } : {}),
+                ...(client ? { client_name: client } : {}),
+                ...(industry ? { industry } : {}),
+            }));
+        }
+    }, []);
 
     const generateSlug = (title: string) => {
         return title
@@ -132,8 +153,8 @@ export default function CreateCaseStudyPage() {
             // Upload image if selected
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
+                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+                const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
                 const uploadFormData = new FormData();
@@ -153,7 +174,8 @@ export default function CreateCaseStudyPage() {
             const processedContent = await uploadImages(
                 formData.content,
                 'case_studies',
-                `case-studies/${formData.slug || 'uncategorized'}/content`
+                `case-studies/${formData.slug || 'uncategorized'}/content`,
+                formData.title
             );
 
             await createCaseStudy({
@@ -369,6 +391,7 @@ export default function CreateCaseStudyPage() {
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_title ? [formData.seo_title] : []}
                         onValidationCheck={setContentWarnings}
+                        contentTitle={formData.title}
                     />
                 </div>
                 {/* Technologies */}

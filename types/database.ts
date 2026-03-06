@@ -62,6 +62,7 @@ export interface Database {
                     featured: boolean
                     published_at: string | null
                     is_english: boolean | null
+                    pair_id: string | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
@@ -85,6 +86,7 @@ export interface Database {
                     featured?: boolean
                     published_at?: string | null
                     is_english?: boolean | null
+                    pair_id?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -107,6 +109,7 @@ export interface Database {
                     featured?: boolean
                     published_at?: string | null
                     is_english?: boolean | null
+                    pair_id?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -136,10 +139,12 @@ export interface Database {
                     seo_description: string | null
                     published_at: string | null
                     is_english: boolean | null
+                    pair_id: string | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
                     updated_by: string | null
+                    deleted_at?: string | null
                 }
                 Insert: {
                     id?: string
@@ -163,6 +168,7 @@ export interface Database {
                     seo_description?: string | null
                     published_at?: string | null
                     is_english?: boolean | null
+                    pair_id?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -190,6 +196,7 @@ export interface Database {
                     seo_description?: string | null
                     published_at?: string | null
                     is_english?: boolean | null
+                    pair_id?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null

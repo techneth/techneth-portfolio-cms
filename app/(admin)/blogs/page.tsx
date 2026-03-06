@@ -1,17 +1,147 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Eye, Search, AlertTriangle, RotateCcw, Trash, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, AlertTriangle, RotateCcw, Trash, Star, Globe } from 'lucide-react';
 import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog, toggleFeaturedBlog } from './actions';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
 import { createClient } from '@/lib/supabase/client';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+type Blog = any;
+
+/** Group blogs into EN/NL pairs.
+ *  A "pair" is two posts where one has pair_id pointing to the other's id.
+ *  Because only the newly-created counterpart stores pair_id, we check both
+ *  directions: A→B (A.pair_id === B.id) and B→A (B.pair_id === A.id).
+ */
+function groupByPairId(blogs: Blog[]): Blog[][] {
+    const byId = new Map<string, Blog>();
+    for (const b of blogs) byId.set(b.id, b);
+
+    const visited = new Set<string>();
+    const groups: Blog[][] = [];
+
+    // Paired posts first
+    for (const b of blogs) {
+        if (visited.has(b.id)) continue;
+
+        // Does this post point at another?
+        const directPartner = b.pair_id ? byId.get(b.pair_id) : null;
+        // Does any unvisited post point back at this one?
+        const reversePartner = !directPartner
+            ? blogs.find((x) => x.pair_id === b.id && !visited.has(x.id))
+            : null;
+
+        const partner = directPartner ?? reversePartner ?? null;
+
+        if (partner && !visited.has(partner.id)) {
+            // Always put English first
+            const group = b.is_english ? [b, partner] : [partner, b];
+            groups.push(group);
+            visited.add(b.id);
+            visited.add(partner.id);
+        } else if (!partner) {
+            // Solo card — no partner found
+            groups.push([b]);
+            visited.add(b.id);
+        }
+        // If partner was already visited we skip (it was handled in a prior iteration)
+    }
+
+    return groups;
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${status === 'published' ? 'bg-[#00A99D]/10 text-[#007A73]' : 'bg-gray-100 text-gray-500'}`}>
+            {status}
+        </span>
+    );
+}
+
+function LangBadge({ isEnglish }: { isEnglish: boolean }) {
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${isEnglish ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+            <Globe size={10} />
+            {isEnglish ? 'EN' : 'NL'}
+        </span>
+    );
+}
+
+interface CardProps {
+    blog: Blog;
+    viewFilter: 'active' | 'trash';
+    onDelete: (id: string, title: string) => void;
+    onPermanentDelete: (id: string, title: string) => void;
+    onRestore: (id: string, title: string) => void;
+    onToggleFeatured: (id: string, featured: boolean, title: string) => void;
+}
+
+function BlogCard({ blog, viewFilter, onDelete, onPermanentDelete, onRestore, onToggleFeatured }: CardProps) {
+    return (
+        <div className={`flex-1 min-w-0 rounded-lg border bg-white p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow ${blog.is_english ? 'border-blue-100' : 'border-orange-100'}`}>
+            {/* Top row: lang badge + featured star */}
+            <div className="flex items-center justify-between">
+                <LangBadge isEnglish={blog.is_english} />
+                <button
+                    onClick={() => onToggleFeatured(blog.id, blog.featured, blog.title)}
+                    className={`transition-colors focus:outline-none ${blog.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
+                    title={blog.featured ? 'Remove featured' : 'Mark as featured'}
+                >
+                    <Star size={16} fill={blog.featured ? 'currentColor' : 'none'} />
+                </button>
+            </div>
+
+            {/* Title */}
+            <div>
+                <div className="text-sm font-semibold text-gray-900 leading-snug">{blog.title}</div>
+                <div className="text-xs text-gray-400 mt-0.5 truncate">{blog.slug}</div>
+            </div>
+
+            {/* Meta */}
+            <div className="flex flex-wrap gap-1.5 text-xs text-gray-500">
+                <span>{blog.author_name || 'Unknown'}</span>
+                {blog.category && <><span>·</span><span>{blog.category}</span></>}
+                <span>·</span>
+                <span>{format(new Date(blog.created_at), 'MMM d, yyyy')}</span>
+            </div>
+
+            <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                <StatusBadge status={blog.status} />
+                <div className="flex items-center gap-2">
+                    {viewFilter === 'active' ? (
+                        <>
+                            <Link href={`/blogs/${blog.id}/edit`} className="text-[#00A99D] hover:text-[#008F84]" title="Edit">
+                                <Edit size={16} />
+                            </Link>
+                            <button onClick={() => onDelete(blog.id, blog.title)} className="text-red-500 hover:text-red-700" title="Move to trash">
+                                <Trash2 size={16} />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={() => onRestore(blog.id, blog.title)} className="text-[#00A99D] hover:text-[#008F84]" title="Restore">
+                                <RotateCcw size={16} />
+                            </button>
+                            <button onClick={() => onPermanentDelete(blog.id, blog.title)} className="text-red-500 hover:text-red-700" title="Permanently delete">
+                                <Trash size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function BlogsPage() {
-    const [blogs, setBlogs] = useState<any[]>([]);
+    const [blogs, setBlogs] = useState<Blog[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -40,9 +170,7 @@ export default function BlogsPage() {
         fetchUser();
     }, []);
 
-    useEffect(() => {
-        loadBlogs();
-    }, [statusFilter, searchQuery, viewFilter]);
+    useEffect(() => { loadBlogs(); }, [statusFilter, searchQuery, viewFilter]);
 
     const loadBlogs = async () => {
         setLoading(true);
@@ -61,47 +189,28 @@ export default function BlogsPage() {
         }
     };
 
-    const handleDeleteClick = (id: string, title: string) => {
-        setBlogToDelete({ id, title });
-        setDeleteMode('soft');
-        setIsDeleteModalOpen(true);
-    };
+    const grouped = useMemo(() => groupByPairId(blogs), [blogs]);
 
-    const handlePermanentDeleteClick = (id: string, title: string) => {
-        setBlogToDelete({ id, title });
-        setDeleteMode('permanent');
-        setIsDeleteModalOpen(true);
-    };
-
-    const handleRestoreClick = (id: string, title: string) => {
-        setBlogToRestore({ id, title });
-        setIsRestoreModalOpen(true);
-    };
+    const handleDeleteClick = (id: string, title: string) => { setBlogToDelete({ id, title }); setDeleteMode('soft'); setIsDeleteModalOpen(true); };
+    const handlePermanentDeleteClick = (id: string, title: string) => { setBlogToDelete({ id, title }); setDeleteMode('permanent'); setIsDeleteModalOpen(true); };
+    const handleRestoreClick = (id: string, title: string) => { setBlogToRestore({ id, title }); setIsRestoreModalOpen(true); };
 
     const confirmRestore = async () => {
         if (!blogToRestore) return;
-
         const toastId = toast.loading('Restoring blog...');
         setIsRestoreModalOpen(false);
         try {
             await restoreBlog(blogToRestore.id);
             toast.success('Blog restored successfully', { id: toastId });
             loadBlogs();
-        } catch (error) {
-            toast.error('Failed to restore blog', { id: toastId });
-        } finally {
-            setBlogToRestore(null);
-        }
+        } catch { toast.error('Failed to restore blog', { id: toastId }); }
+        finally { setBlogToRestore(null); }
     };
 
     const confirmDelete = async () => {
         if (!blogToDelete) return;
-
-        const toastId = toast.loading(
-            deleteMode === 'permanent' ? 'Permanently deleting blog...' : 'Moving to trash...'
-        );
+        const toastId = toast.loading(deleteMode === 'permanent' ? 'Permanently deleting...' : 'Moving to trash...');
         setIsDeleteModalOpen(false);
-
         try {
             if (deleteMode === 'permanent') {
                 await permanentlyDeleteBlog(blogToDelete.id);
@@ -112,11 +221,8 @@ export default function BlogsPage() {
             }
             loadBlogs();
         } catch (error) {
-            console.error('Error deleting blog:', error);
             toast.error('Failed to delete blog', { id: toastId });
-        } finally {
-            setBlogToDelete(null);
-        }
+        } finally { setBlogToDelete(null); }
     };
 
     const handleToggleFeatured = async (id: string, currentStatus: boolean, title: string) => {
@@ -125,10 +231,7 @@ export default function BlogsPage() {
             await toggleFeaturedBlog(id, !currentStatus);
             toast.success(`Successfully ${currentStatus ? 'removed' : 'added'} featured status`, { id: toastId });
             loadBlogs();
-        } catch (error) {
-            console.error('Error toggling featured status:', error);
-            toast.error('Failed to update featured status', { id: toastId });
-        }
+        } catch { toast.error('Failed to update featured status', { id: toastId }); }
     };
 
     return (
@@ -137,7 +240,7 @@ export default function BlogsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Blogs</h1>
-                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your blog posts</p>
+                    <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your blog posts — English &amp; Dutch versions shown side by side</p>
                 </div>
                 <Link
                     href="/blogs/create"
@@ -152,19 +255,13 @@ export default function BlogsPage() {
             <div className="flex space-x-2">
                 <button
                     onClick={() => setViewFilter('active')}
-                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active'
-                        ? 'bg-[#00A99D] text-white'
-                        : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'
-                        }`}
+                    className={`px-4 py-2 rounded transition-colors ${viewFilter === 'active' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-700 hover:bg-[#00A99D]/10 border border-[#00A99D]/30'}`}
                 >
                     Active Blogs
                 </button>
                 <button
                     onClick={() => setViewFilter('trash')}
-                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash'
-                        ? 'bg-[#DC3545] text-white'
-                        : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'
-                        }`}
+                    className={`px-4 py-2 rounded transition-colors flex items-center space-x-2 ${viewFilter === 'trash' ? 'bg-[#DC3545] text-white' : 'bg-white text-gray-700 hover:bg-[#DC3545]/10 border border-[#DC3545]/30'}`}
                 >
                     <Trash size={16} />
                     <span>Trash</span>
@@ -183,11 +280,7 @@ export default function BlogsPage() {
                             className="input-field pl-10 w-full"
                         />
                     </div>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="input-field"
-                    >
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field">
                         <option value="">All Status</option>
                         <option value="draft">Draft</option>
                         <option value="published">Published</option>
@@ -195,121 +288,50 @@ export default function BlogsPage() {
                 </div>
             </div>
 
-            {/* Blogs Table */}
-            <div className="admin-card overflow-hidden">
+            {/* Card Grid */}
+            <div className="space-y-4">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading...</div>
-                ) : blogs.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="admin-card p-8 text-center text-gray-500">Loading...</div>
+                ) : grouped.length === 0 ? (
+                    <div className="admin-card p-8 text-center text-gray-500">
                         No blogs found. Create your first blog post!
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px]">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Title
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Author
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Category
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Created
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {blogs.map((blog) => (
-                                    <tr key={blog.id} className="table-row">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => handleToggleFeatured(blog.id, blog.featured, blog.title)}
-                                                    className={`transition-colors focus:outline-none ${blog.featured ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
-                                                    title={blog.featured ? 'Remove from featured' : 'Mark as featured'}
-                                                >
-                                                    <Star size={18} fill={blog.featured ? "currentColor" : "none"} />
-                                                </button>
-                                                <div>
-                                                    <div className="flex items-center">
-                                                        <div className="text-sm font-medium text-gray-900">{blog.title}</div>
-                                                        {blog.featured && (
-                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wider">
-                                                                <Star size={10} className="mr-1" fill="currentColor" />
-                                                                Featured
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">{blog.slug}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {blog.author_name || 'Unknown'}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                            {blog.category || 'Uncategorized'}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published' ? 'bg-primary/10 text-primary-dark' : 'bg-secondary/10 text-secondary'}`}>
-                                                {blog.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                            {format(new Date(blog.created_at), 'MMM d, yyyy')}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-sm font-medium">
-                                            <div className="flex items-center justify-end space-x-3">
-                                                {viewFilter === 'active' ? (
-                                                    <>
-                                                        <Link
-                                                            href={`/blogs/${blog.id}/edit`}
-                                                            className="text-[#00A99D] hover:text-[#008F84]"
-                                                        >
-                                                            <Edit size={18} />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDeleteClick(blog.id, blog.title)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleRestoreClick(blog.id, blog.title)}
-                                                            className="text-[#00A99D] hover:text-[#008F84]"
-                                                            title="Restore"
-                                                        >
-                                                            <RotateCcw size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handlePermanentDeleteClick(blog.id, blog.title)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                            title="Permanently Delete"
-                                                        >
-                                                            <Trash size={18} />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
+                    grouped.map((group) => (
+                        <div
+                            key={group[0].slug}
+                            className="admin-card p-4"
+                        >
+                            {/* Slug header */}
+                            <div className="text-xs font-mono text-gray-400 mb-3 px-1">/{group[0].slug}</div>
+                            {/* Side-by-side cards */}
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                {group.map((blog) => (
+                                    <BlogCard
+                                        key={blog.id}
+                                        blog={blog}
+                                        viewFilter={viewFilter}
+                                        onDelete={handleDeleteClick}
+                                        onPermanentDelete={handlePermanentDeleteClick}
+                                        onRestore={handleRestoreClick}
+                                        onToggleFeatured={handleToggleFeatured}
+                                    />
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                {/* Placeholder when only one language exists */}
+                                {group.length === 1 && (
+                                    <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex items-center justify-center text-sm ${group[0].is_english ? 'border-orange-100 text-orange-300' : 'border-blue-100 text-blue-300'}`}>
+                                        <Link
+                                            href={`/blogs/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&author=${encodeURIComponent(group[0].author_name || '')}&category=${encodeURIComponent(group[0].category || '')}`}
+                                            className="flex flex-col items-center gap-1 hover:opacity-75 transition-opacity"
+                                        >
+                                            <Plus size={20} />
+                                            <span className="text-xs">{group[0].is_english ? 'Add Dutch version' : 'Add English version'}</span>
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
 
@@ -334,18 +356,12 @@ export default function BlogsPage() {
                         )}
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button
-                            onClick={() => setIsDeleteModalOpen(false)}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
-                        >
+                        <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">
                             Cancel
                         </button>
                         <button
                             onClick={confirmDelete}
-                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent'
-                                ? 'bg-[#DC3545] hover:bg-[#DC3545]/90'
-                                : 'bg-[#00A99D] hover:bg-[#008F84]'
-                                }`}
+                            className={`px-4 py-2 text-white rounded transition-colors flex items-center ${deleteMode === 'permanent' ? 'bg-[#DC3545] hover:bg-[#DC3545]/90' : 'bg-[#00A99D] hover:bg-[#008F84]'}`}
                         >
                             <Trash2 size={16} className="mr-2" />
                             {deleteMode === 'permanent' ? 'Permanently Delete' : 'Move to Trash'}
@@ -363,24 +379,16 @@ export default function BlogsPage() {
                 <div className="space-y-4">
                     <div className="flex items-center p-3 bg-primary/10 rounded-md">
                         <RotateCcw className="text-primary mr-3 flex-shrink-0" size={24} />
-                        <p className="text-sm text-primary-dark">
-                            This will move the blog post back to your active list.
-                        </p>
+                        <p className="text-sm text-primary-dark">This will move the blog post back to your active list.</p>
                     </div>
                     <p className="text-gray-600">
                         Restore <span className="font-semibold text-gray-800">"{blogToRestore?.title}"</span> to active status?
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
-                        <button
-                            onClick={() => setIsRestoreModalOpen(false)}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
-                        >
+                        <button onClick={() => setIsRestoreModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300">
                             Cancel
                         </button>
-                        <button
-                            onClick={confirmRestore}
-                            className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors flex items-center"
-                        >
+                        <button onClick={confirmRestore} className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors flex items-center">
                             <RotateCcw size={16} className="mr-2" />
                             Restore Blog
                         </button>
