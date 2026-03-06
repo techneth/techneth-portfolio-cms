@@ -127,8 +127,9 @@ export default function CreateBlogPage() {
             // Upload image if selected
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
+                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+                // Name featured image by slug, e.g. "my-blog-post.jpg"
+                const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
                 const uploadFormData = new FormData();
@@ -148,7 +149,8 @@ export default function CreateBlogPage() {
             const processedContent = await uploadImages(
                 formData.content,
                 'blogs',
-                `blogs/${formData.slug || 'uncategorized'}/content`
+                `blogs/${formData.slug || 'uncategorized'}/content`,
+                formData.title
             );
 
             await createBlog({
@@ -356,6 +358,7 @@ export default function CreateBlogPage() {
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_keywords}
                         onValidationCheck={setEditorWarnings}
+                        contentTitle={formData.title}
                     />
                 </div>
 

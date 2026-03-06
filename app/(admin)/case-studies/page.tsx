@@ -167,6 +167,9 @@ export default function CaseStudiesPage() {
                                         Title
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Language
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Client/Industry
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -205,6 +208,9 @@ export default function CaseStudiesPage() {
                                                     <div className="text-sm text-gray-500">{cs.slug}</div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            <div>{cs.is_english ? 'English' : 'Dutch'}</div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             <div>{cs.client_name || '-'}</div>

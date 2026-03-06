@@ -215,6 +215,9 @@ export default function BlogsPage() {
                                         Author
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Language
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Category
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -256,6 +259,9 @@ export default function BlogsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             {blog.author_name || 'Unknown'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            {blog.is_english ? 'English' : 'Dutch'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {blog.category || 'Uncategorized'}

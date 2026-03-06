@@ -166,8 +166,8 @@ export default function EditCaseStudyPage() {
             // Upload image if selected
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
+                const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+                const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
                 const uploadFormData = new FormData();
@@ -187,7 +187,8 @@ export default function EditCaseStudyPage() {
             const processedContent = await uploadImages(
                 formData.content,
                 'case_studies',
-                `case-studies/${formData.slug || caseStudyId}/content`
+                `case-studies/${formData.slug || caseStudyId}/content`,
+                formData.title
             );
 
             await updateCaseStudy(caseStudyId, {
@@ -434,6 +435,7 @@ export default function EditCaseStudyPage() {
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_title ? [formData.seo_title] : []}
                         onValidationCheck={setContentWarnings}
+                        contentTitle={formData.title}
                     />
                 </div>
                 {/* Technologies */}

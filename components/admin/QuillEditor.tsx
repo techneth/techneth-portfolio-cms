@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 
 // 1. CSS is safe to import at the top
@@ -9,8 +9,17 @@ import 'react-quill-new/dist/quill.snow.css';
 // 2. Import the component dynamically
 const ReactQuill = dynamic(() => import('react-quill-new'), {
     ssr: false,
-    loading: () => <div className="h-96 bg-gray-50 border rounded-lg animate-pulse" />
+    loading: () => <div className="h-96 bg-gray-50 border rounded-lg animate-pulse" />,
 });
+
+/** Convert a title to a human-readable slug for use in alt tags */
+function toAltSlug(text: string): string {
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
 
 export default function QuillEditor({
     value,
@@ -18,11 +27,19 @@ export default function QuillEditor({
     placeholder,
     onImageSelect,
     seoKeywords = [],
-    onValidationCheck
+    onValidationCheck,
+    contentTitle,
 }: any) {
     // --- THE HYDRATION FIX ---
-    // This state ensures the "real" editor only renders AFTER the initial hydration
     const [mounted, setMounted] = useState(false);
+
+    // Keep the latest onImageSelect / contentTitle in a ref so the memoised
+    // handler closure always sees the current values without needing to be
+    // recreated (which would reset the editor).
+    const onImageSelectRef = useRef(onImageSelect);
+    const contentTitleRef = useRef(contentTitle);
+    useEffect(() => { onImageSelectRef.current = onImageSelect; }, [onImageSelect]);
+    useEffect(() => { contentTitleRef.current = contentTitle; }, [contentTitle]);
 
     useEffect(() => {
         setMounted(true);
@@ -31,7 +48,6 @@ export default function QuillEditor({
         const initQuill = async () => {
             const { Quill } = await import('react-quill-new');
 
-            // Check if already registered to prevent HMR errors
             if (!Quill.imports['formats/image']) {
                 const Image = Quill.import('formats/image') as any;
                 const originalSanitize = Image.sanitize;
@@ -48,6 +64,42 @@ export default function QuillEditor({
         initQuill();
     }, []);
 
+    /**
+     * Custom image handler referenced by the toolbar.
+     * `this` inside the handler is the Quill Toolbar module, so `this.quill`
+     * gives direct access to the editor instance — no React ref needed.
+     */
+    const imageHandler = useCallback(function (this: any) {
+        const quill = this.quill;
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            const currentOnImageSelect = onImageSelectRef.current;
+            const blobUrl = currentOnImageSelect ? currentOnImageSelect(file) : URL.createObjectURL(file);
+
+            const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+            const titleSlug = contentTitleRef.current ? toAltSlug(contentTitleRef.current) : 'image';
+            const altText = `techneth ${titleSlug} .${ext}`;
+
+            if (quill) {
+                const range = quill.getSelection(true);
+                quill.insertEmbed(range.index, 'image', blobUrl, 'user');
+                // Set the alt attribute on the just-inserted <img>
+                const [leaf] = quill.getLeaf(range.index);
+                if (leaf?.domNode?.tagName === 'IMG') {
+                    leaf.domNode.setAttribute('alt', altText);
+                }
+                quill.setSelection(range.index + 1, 0);
+            }
+        };
+    }, []); // stable — reads latest values through refs
+
     // 4. Memoize modules to prevent re-renders
     const modules = useMemo(() => ({
         toolbar: {
@@ -59,12 +111,13 @@ export default function QuillEditor({
                 ['link', 'image'],
                 ['clean']
             ],
+            handlers: {
+                image: imageHandler,
+            },
         }
-    }), []);
+    }), [imageHandler]);
 
     // --- HYDRATION GUARD ---
-    // If we are on the server or the very first client render, 
-    // return a skeleton that matches the server's output exactly.
     if (!mounted) {
         return (
             <div className="h-96 bg-gray-50 border rounded-lg flex items-center justify-center text-gray-400">
@@ -84,6 +137,5 @@ export default function QuillEditor({
                 className="h-96 mb-12"
             />
         </div>
-
     );
 }
