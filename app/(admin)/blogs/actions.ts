@@ -19,6 +19,7 @@ export interface BlogFormData {
     featured?: boolean;
     is_english: boolean;
     author_name?: string;
+    pair_id?: string | null;
 }
 
 export async function createBlog(formData: BlogFormData) {
@@ -322,7 +323,7 @@ export async function getBlogs(filters?: {
         async () => {
             let query = supabase
                 .from('blogs')
-                .select('id, title, slug, author_name, status, category, featured, is_english, created_at, created_by, deleted_at')
+                .select('id, title, slug, author_name, status, category, featured, is_english, pair_id, created_at, created_by, deleted_at')
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {

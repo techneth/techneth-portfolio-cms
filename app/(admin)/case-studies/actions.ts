@@ -22,6 +22,7 @@ export interface CaseStudyFormData {
     seo_title: string;
     seo_description: string;
     is_english: boolean;
+    pair_id?: string | null;
 }
 
 export async function createCaseStudy(formData: CaseStudyFormData) {
@@ -319,7 +320,7 @@ export async function getCaseStudies(filters?: {
         async () => {
             let query = supabase
                 .from('case_studies')
-                .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+                .select('id, title, slug, category, client_name, industry, status, featured, is_english, pair_id, created_at, created_by, deleted_at')
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {

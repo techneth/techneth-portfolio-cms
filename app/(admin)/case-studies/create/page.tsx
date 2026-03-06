@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Save, Eye, Star, Globe } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
@@ -15,6 +15,7 @@ import ValidationModal from '@/components/admin/ValidationModal';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -34,13 +35,27 @@ export default function CreateCaseStudyPage() {
         featured: false,
         seo_title: '',
         seo_description: '',
-        is_english: false,
+        is_english: true,  // default to English
+        pair_id: null,
     });
     const [techInput, setTechInput] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
+
+    // Pre-fill from query params when creating a counterpart version
+    useEffect(() => {
+        const lang = searchParams.get('lang');      // 'en' or 'nl'
+        const pairId = searchParams.get('pair_id'); // ID of the existing version to pair with
+        if (lang || pairId) {
+            setFormData((prev) => ({
+                ...prev,
+                is_english: lang === 'en',
+                pair_id: pairId || null,
+            }));
+        }
+    }, []);
 
     const generateSlug = (title: string) => {
         return title
