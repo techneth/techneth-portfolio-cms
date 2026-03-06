@@ -316,12 +316,14 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
                                 required
                             >
-                                <option value="" disabled>Select a category</option>
+<option value="" disabled>Select a category</option>
                                 <option value="Custom Web Development">Custom Web Development</option>
                                 <option value="Mobile App Development">Mobile App Development</option>
+                                <option value="Custom Software Development">Custom Software Development</option>
                                 <option value="Product Design">Product Design</option>
                                 <option value="UI-UX Design">UI-UX Design</option>
                                 <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
+                                <option value="Information">Information</option>
                             </select>
                         </div>
                         <div>

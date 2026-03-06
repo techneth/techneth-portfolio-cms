@@ -329,9 +329,12 @@ export default function EditCaseStudyPage() {
                                 <option value="" disabled>Select a category</option>
                                 <option value="Custom Web Development">Custom Web Development</option>
                                 <option value="Mobile App Development">Mobile App Development</option>
+                                <option value="Custom Software Development">Custom Software Development</option>
                                 <option value="Product Design">Product Design</option>
                                 <option value="UI-UX Design">UI-UX Design</option>
                                 <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
+                                <option value="Information">Information</option>
+
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
