@@ -46,13 +46,19 @@ export default function CreateCaseStudyPage() {
 
     // Pre-fill from query params when creating a counterpart version
     useEffect(() => {
-        const lang = searchParams.get('lang');      // 'en' or 'nl'
-        const pairId = searchParams.get('pair_id'); // ID of the existing version to pair with
-        if (lang || pairId) {
+        const lang = searchParams.get('lang');         // 'en' or 'nl'
+        const pairId = searchParams.get('pair_id');    // ID of the existing version to pair with
+        const category = searchParams.get('category'); // category from existing post
+        const client = searchParams.get('client');     // client_name from existing post
+        const industry = searchParams.get('industry'); // industry from existing post
+        if (lang || pairId || category || client || industry) {
             setFormData((prev) => ({
                 ...prev,
                 is_english: lang === 'en',
                 pair_id: pairId || null,
+                ...(category ? { category } : {}),
+                ...(client ? { client_name: client } : {}),
+                ...(industry ? { industry } : {}),
             }));
         }
     }, []);

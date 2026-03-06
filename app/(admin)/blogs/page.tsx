@@ -13,27 +13,46 @@ import { createClient } from '@/lib/supabase/client';
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Blog = any;
 
-/** Group blogs: posts with the same pair_id are paired EN/NL side-by-side.
- *  Posts without a pair_id are shown as solo cards. */
+/** Group blogs into EN/NL pairs.
+ *  A "pair" is two posts where one has pair_id pointing to the other's id.
+ *  Because only the newly-created counterpart stores pair_id, we check both
+ *  directions: A→B (A.pair_id === B.id) and B→A (B.pair_id === A.id).
+ */
 function groupByPairId(blogs: Blog[]): Blog[][] {
-    const paired = new Map<string, Blog[]>();
-    const solo: Blog[][] = [];
+    const byId = new Map<string, Blog>();
+    for (const b of blogs) byId.set(b.id, b);
 
+    const visited = new Set<string>();
+    const groups: Blog[][] = [];
+
+    // Paired posts first
     for (const b of blogs) {
-        if (b.pair_id) {
-            if (!paired.has(b.pair_id)) paired.set(b.pair_id, []);
-            // English first within the pair
-            if (b.is_english) {
-                paired.get(b.pair_id)!.unshift(b);
-            } else {
-                paired.get(b.pair_id)!.push(b);
-            }
-        } else {
-            solo.push([b]);
+        if (visited.has(b.id)) continue;
+
+        // Does this post point at another?
+        const directPartner = b.pair_id ? byId.get(b.pair_id) : null;
+        // Does any unvisited post point back at this one?
+        const reversePartner = !directPartner
+            ? blogs.find((x) => x.pair_id === b.id && !visited.has(x.id))
+            : null;
+
+        const partner = directPartner ?? reversePartner ?? null;
+
+        if (partner && !visited.has(partner.id)) {
+            // Always put English first
+            const group = b.is_english ? [b, partner] : [partner, b];
+            groups.push(group);
+            visited.add(b.id);
+            visited.add(partner.id);
+        } else if (!partner) {
+            // Solo card — no partner found
+            groups.push([b]);
+            visited.add(b.id);
         }
+        // If partner was already visited we skip (it was handled in a prior iteration)
     }
 
-    return [...Array.from(paired.values()), ...solo];
+    return groups;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -302,7 +321,7 @@ export default function BlogsPage() {
                                 {group.length === 1 && (
                                     <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex items-center justify-center text-sm ${group[0].is_english ? 'border-orange-100 text-orange-300' : 'border-blue-100 text-blue-300'}`}>
                                         <Link
-                                            href={`/blogs/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}`}
+                                            href={`/blogs/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&author=${encodeURIComponent(group[0].author_name || '')}&category=${encodeURIComponent(group[0].category || '')}`}
                                             className="flex flex-col items-center gap-1 hover:opacity-75 transition-opacity"
                                         >
                                             <Plus size={20} />

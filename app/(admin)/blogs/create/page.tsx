@@ -44,13 +44,17 @@ export default function CreateBlogPage() {
 
     // Pre-fill from query params when creating a counterpart version
     useEffect(() => {
-        const lang = searchParams.get('lang');      // 'en' or 'nl'
-        const pairId = searchParams.get('pair_id'); // ID of the existing version to pair with
-        if (lang || pairId) {
+        const lang = searchParams.get('lang');        // 'en' or 'nl'
+        const pairId = searchParams.get('pair_id');   // ID of the existing version to pair with
+        const author = searchParams.get('author');    // author_name from existing post
+        const category = searchParams.get('category'); // category from existing post
+        if (lang || pairId || author || category) {
             setFormData((prev) => ({
                 ...prev,
                 is_english: lang === 'en',
                 pair_id: pairId || null,
+                ...(author ? { author_name: author } : {}),
+                ...(category ? { category } : {}),
             }));
         }
     }, []);

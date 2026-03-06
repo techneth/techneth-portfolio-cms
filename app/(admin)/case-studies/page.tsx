@@ -11,26 +11,39 @@ import Modal from '@/components/admin/Modal';
 // ─── Types ───────────────────────────────────────────────────────────────────
 type CS = any;
 
-/** Group case studies: posts with the same pair_id sit side-by-side.
- *  Posts without a pair_id are shown as solo cards. */
+/** Group case studies into EN/NL pairs.
+ *  Because only the newly-created counterpart stores pair_id, we check both
+ *  directions: A.pair_id===B.id and B.pair_id===A.id.
+ */
 function groupByPairId(items: CS[]): CS[][] {
-    const paired = new Map<string, CS[]>();
-    const solo: CS[][] = [];
+    const byId = new Map<string, CS>();
+    for (const cs of items) byId.set(cs.id, cs);
+
+    const visited = new Set<string>();
+    const groups: CS[][] = [];
 
     for (const cs of items) {
-        if (cs.pair_id) {
-            if (!paired.has(cs.pair_id)) paired.set(cs.pair_id, []);
-            if (cs.is_english) {
-                paired.get(cs.pair_id)!.unshift(cs);
-            } else {
-                paired.get(cs.pair_id)!.push(cs);
-            }
-        } else {
-            solo.push([cs]);
+        if (visited.has(cs.id)) continue;
+
+        const directPartner = cs.pair_id ? byId.get(cs.pair_id) : null;
+        const reversePartner = !directPartner
+            ? items.find((x) => x.pair_id === cs.id && !visited.has(x.id))
+            : null;
+
+        const partner = directPartner ?? reversePartner ?? null;
+
+        if (partner && !visited.has(partner.id)) {
+            const group = cs.is_english ? [cs, partner] : [partner, cs];
+            groups.push(group);
+            visited.add(cs.id);
+            visited.add(partner.id);
+        } else if (!partner) {
+            groups.push([cs]);
+            visited.add(cs.id);
         }
     }
 
-    return [...Array.from(paired.values()), ...solo];
+    return groups;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -264,7 +277,7 @@ export default function CaseStudiesPage() {
                                 {group.length === 1 && (
                                     <div className={`flex-1 min-w-0 rounded-lg border-2 border-dashed p-4 flex items-center justify-center text-sm ${group[0].is_english ? 'border-orange-100 text-orange-300' : 'border-blue-100 text-blue-300'}`}>
                                         <Link
-                                            href={`/case-studies/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}`}
+                                            href={`/case-studies/create?lang=${group[0].is_english ? 'nl' : 'en'}&pair_id=${encodeURIComponent(group[0].pair_id || group[0].id)}&category=${encodeURIComponent(group[0].category || '')}&client=${encodeURIComponent(group[0].client_name || '')}&industry=${encodeURIComponent(group[0].industry || '')}`}
                                             className="flex flex-col items-center gap-1 hover:opacity-75 transition-opacity"
                                         >
                                             <Plus size={20} />
