@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface Job {
@@ -58,29 +58,35 @@ export async function getJobs(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    let query = supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const cacheKey = [
+        'jobs-list',
+        filters?.department ?? 'all',
+        filters?.location ?? 'all',
+        filters?.employment_type ?? 'all',
+        filters?.is_active !== undefined ? String(filters.is_active) : 'all',
+    ];
 
-    if (filters?.department) {
-        query = query.eq('department', filters.department);
-    }
-    if (filters?.location) {
-        query = query.eq('location', filters.location);
-    }
-    if (filters?.employment_type) {
-        query = query.eq('employment_type', filters.employment_type);
-    }
-    if (filters?.is_active !== undefined) {
-        query = query.eq('is_active', filters.is_active);
-    }
+    const fetchJobs = unstable_cache(
+        async () => {
+            let query = supabase
+                .from('jobs')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-    const { data, error } = await query;
+            if (filters?.department) query = query.eq('department', filters.department);
+            if (filters?.location) query = query.eq('location', filters.location);
+            if (filters?.employment_type) query = query.eq('employment_type', filters.employment_type);
+            if (filters?.is_active !== undefined) query = query.eq('is_active', filters.is_active);
 
-    if (error) throw error;
+            const { data, error } = await query;
+            if (error) throw error;
+            return (data || []) as Job[];
+        },
+        cacheKey,
+        { tags: ['jobs'], revalidate: 300 }
+    );
 
-    return data || [];
+    return fetchJobs();
 }
 
 export async function getJob(id: string): Promise<Job> {
@@ -91,17 +97,22 @@ export async function getJob(id: string): Promise<Job> {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const fetchJob = unstable_cache(
+        async () => {
+            const { data, error } = await supabase
+                .from('jobs')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-    if (error || !data) {
-        throw new Error('Job not found');
-    }
+            if (error || !data) throw new Error('Job not found');
+            return data as Job;
+        },
+        [`job-${id}`],
+        { tags: [`job-${id}`, 'jobs'], revalidate: 300 }
+    );
 
-    return data;
+    return fetchJob();
 }
 
 export async function createJob(jobData: CreateJobData): Promise<Job> {
@@ -142,6 +153,9 @@ export async function createJob(jobData: CreateJobData): Promise<Job> {
     });
 
     revalidatePath('/careers');
+    revalidateTag('jobs', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return newJob;
 }
 
@@ -203,6 +217,10 @@ export async function updateJob(id: string, updates: UpdateJobData): Promise<Job
     });
 
     revalidatePath('/careers');
+    revalidateTag('jobs', 'default');
+    revalidateTag(`job-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return updatedJob;
 }
 

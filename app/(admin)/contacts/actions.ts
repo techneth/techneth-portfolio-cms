@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import path from 'path';
@@ -14,20 +14,28 @@ export async function getContacts(filters?: { status?: string }) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    let query = supabase
-        .from('contact_submissions')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const cacheKey = ['contacts-list', filters?.status ?? 'all'];
 
-    if (filters?.status) {
-        query = query.eq('status', filters.status);
-    }
+    const fetchContacts = unstable_cache(
+        async () => {
+            let query = supabase
+                .from('contact_submissions')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-    const { data, error } = await query;
+            if (filters?.status) {
+                query = query.eq('status', filters.status);
+            }
 
-    if (error) throw error;
+            const { data, error } = await query;
+            if (error) throw error;
+            return data;
+        },
+        cacheKey,
+        { tags: ['contacts'], revalidate: 60 }
+    );
 
-    return data;
+    return fetchContacts();
 }
 
 export async function getContact(id: string) {
@@ -36,15 +44,22 @@ export async function getContact(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const { data, error } = await supabase
-        .from('contact_submissions')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const fetchContact = unstable_cache(
+        async () => {
+            const { data, error } = await supabase
+                .from('contact_submissions')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-    if (error) throw error;
+            if (error) throw error;
+            return data;
+        },
+        [`contact-${id}`],
+        { tags: [`contact-${id}`, 'contacts'], revalidate: 120 }
+    );
 
-    return data;
+    return fetchContact();
 }
 
 export async function updateContactStatus(
@@ -93,6 +108,10 @@ export async function updateContactStatus(
     });
 
     revalidatePath('/contacts');
+    revalidateTag('contacts', 'default');
+    revalidateTag(`contact-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -136,6 +155,8 @@ export async function addInternalNote(id: string, note: string) {
     });
 
     revalidatePath('/contacts');
+    revalidateTag('contacts', 'default');
+    revalidateTag(`contact-${id}`, 'default');
     return data;
 }
 
@@ -257,6 +278,10 @@ export async function replyToContact(id: string, subject: string, message: strin
     });
 
     revalidatePath('/contacts');
+    revalidateTag('contacts', 'default');
+    revalidateTag(`contact-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -296,5 +321,8 @@ export async function deleteContact(id: string) {
     });
 
     revalidatePath('/contacts');
+    revalidateTag('contacts', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return { success: true };
 }

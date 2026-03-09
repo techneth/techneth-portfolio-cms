@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export interface CaseStudyFormData {
     title: string;
@@ -59,6 +59,9 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -83,6 +86,9 @@ export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: Cas
     await supabase.from('case_studies').update({ pair_id: enData.id }).eq('id', enData.id);
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return { en: enData, nl: nlData };
 }
 
@@ -100,6 +106,7 @@ export async function linkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
 }
 
 /** Remove the translation pairing from both posts. */
@@ -116,6 +123,7 @@ export async function unlinkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
 }
 
 export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
@@ -166,6 +174,10 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -208,6 +220,10 @@ export async function deleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function restoreCaseStudy(id: string) {
@@ -237,6 +253,10 @@ export async function restoreCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -302,6 +322,9 @@ export async function permanentlyDeleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
@@ -351,6 +374,8 @@ export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
     return data;
 }
 
@@ -426,19 +451,22 @@ export async function getCaseStudy(id: string): Promise<Database['public']['Tabl
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const { data, error } = await supabase
-        .from('case_studies')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const fetchCaseStudy = unstable_cache(
+        async () => {
+            const { data, error } = await supabase
+                .from('case_studies')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-    if (error) throw error;
-    if (!data) throw new Error('Case study not found');
+            if (error) throw error;
+            if (!data) throw new Error('Case study not found');
 
-    // Editors can view all case studies
-    // if (user.role === 'editor' && data.created_by !== user.id) {
-    //     throw new Error('Forbidden');
-    // }
+            return data;
+        },
+        [`case-study-${id}`],
+        { tags: [`case-study-${id}`, 'case-studies'], revalidate: 300 }
+    );
 
-    return data as Database['public']['Tables']['case_studies']['Row'];
+    return fetchCaseStudy() as Promise<Database['public']['Tables']['case_studies']['Row']>;
 }
