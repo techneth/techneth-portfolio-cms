@@ -60,6 +60,66 @@ export async function createBlog(formData: BlogFormData) {
     return data;
 }
 
+/** Create an English + Dutch blog post together, automatically linked as a pair. */
+export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData) {
+    const user = await getCurrentUser();
+    if (!user || !canPerformAction(user, 'create', 'blog')) throw new Error('Unauthorized');
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    // Insert English post first
+    const { data: enData, error: enError } = await supabase
+        .from('blogs')
+        .insert({ ...enForm, is_english: true, author_id: user.id, author_name: enForm.author_name || user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
+        .select().single();
+    if (enError) throw enError;
+
+    // Insert Dutch post, pair_id → English post id
+    const { data: nlData, error: nlError } = await supabase
+        .from('blogs')
+        .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: nlForm.author_name || user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
+        .select().single();
+    if (nlError) throw nlError;
+
+    // Also set pair_id on the English post (self-anchored)
+    await supabase.from('blogs').update({ pair_id: enData.id }).eq('id', enData.id);
+
+    revalidatePath('/blogs');
+    return { en: enData, nl: nlData };
+}
+
+/** Link two existing blogs as a translation pair. Both get the same pair_id. */
+export async function linkBlogPair(idA: string, idB: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+    const sharedPairId = idA; // Use one post's own ID as the shared pair_id
+
+    const { error } = await supabase
+        .from('blogs')
+        .update({ pair_id: sharedPairId, updated_by: user.id })
+        .in('id', [idA, idB]);
+
+    if (error) throw error;
+    revalidatePath('/blogs');
+}
+
+/** Remove the translation pairing from both posts. */
+export async function unlinkBlogPair(idA: string, idB: string) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthorized');
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    const { error } = await supabase
+        .from('blogs')
+        .update({ pair_id: null, updated_by: user.id })
+        .in('id', [idA, idB]);
+
+    if (error) throw error;
+    revalidatePath('/blogs');
+}
+
 export async function updateBlog(id: string, formData: BlogFormData) {
     const user = await getCurrentUser();
     if (!user) throw new Error('Unauthorized');
