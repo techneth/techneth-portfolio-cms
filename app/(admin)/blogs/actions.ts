@@ -299,7 +299,7 @@ export async function toggleFeaturedBlog(id: string, featured: boolean) {
 
 export async function restoreBlog(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'update', 'blog')) throw new Error('Unauthorized');
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
@@ -333,7 +333,7 @@ export async function restoreBlog(id: string) {
 
 export async function permanentlyDeleteBlog(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'delete', 'blog')) throw new Error('Unauthorized');
 
     const { createAdminClient } = await import('@/lib/supabase/server');
     const adminClient = createAdminClient() as SupabaseClient<any>;
@@ -425,7 +425,7 @@ export async function getBlogs(filters?: {
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {
-                if (user.role !== 'super_admin') return [];
+                if (!canPerformAction(user, 'delete', 'blog')) return [];
                 query = query.not('deleted_at', 'is', null);
             } else {
                 query = query.is('deleted_at', null);

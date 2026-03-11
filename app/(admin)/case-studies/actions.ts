@@ -241,7 +241,7 @@ export async function deleteCaseStudy(id: string) {
 
 export async function restoreCaseStudy(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'update', 'case_study')) throw new Error('Unauthorized');
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
@@ -275,7 +275,7 @@ export async function restoreCaseStudy(id: string) {
 
 export async function permanentlyDeleteCaseStudy(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'delete', 'case_study')) throw new Error('Unauthorized');
 
     const { createAdminClient } = await import('@/lib/supabase/server');
     const adminClient = createAdminClient() as SupabaseClient<any>;
@@ -418,7 +418,7 @@ export async function getCaseStudies(filters?: {
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {
-                if (user.role !== 'super_admin') return [];
+                if (!canPerformAction(user, 'delete', 'case_study')) return [];
                 query = query.not('deleted_at', 'is', null);
             } else {
                 query = query.is('deleted_at', null);
