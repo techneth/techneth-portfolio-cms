@@ -8,6 +8,8 @@ import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { getBlog, updateBlog, deleteBlog, BlogFormData } from '../../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
+import CategorySelect from '@/components/admin/CategorySelect';
+import { getNlCategory, getEnCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -21,6 +23,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
     const [loading, setLoading] = useState(true);
     const { addImage, uploadImages, clearQueue } = useImageUploadQueue();
     const [saving, setSaving] = useState(false);
+    const [selectedEnCategory, setSelectedEnCategory] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [formData, setFormData] = useState<BlogFormData>({
@@ -66,6 +69,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 is_english: data.is_english ?? false,
                 author_name: data.author_name || '',
             });
+            setSelectedEnCategory(getEnCategory(data.category || ''));
         } catch (error) {
             console.error('Error loading blog:', error);
             toast.error('Failed to load blog post');
@@ -179,8 +183,10 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                 formData.title
             );
 
+            const categoryToSave = formData.is_english ? selectedEnCategory : getNlCategory(selectedEnCategory);
             await updateBlog(id, {
                 ...formData,
+                category: categoryToSave,
                 content: processedContent,
                 featured_image: imageUrl,
                 status
@@ -310,21 +316,11 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Category *
                             </label>
-                            <select
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
+                            <CategorySelect
+                                value={selectedEnCategory}
+                                onChange={setSelectedEnCategory}
                                 required
-                            >
-<option value="" disabled>Select a category</option>
-                                <option value="Custom Web Development">Custom Web Development</option>
-                                <option value="Mobile App Development">Mobile App Development</option>
-                                <option value="Custom Software Development">Custom Software Development</option>
-                                <option value="Product Design">Product Design</option>
-                                <option value="UI-UX Design">UI-UX Design</option>
-                                <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
-                                <option value="Information">Information</option>
-                            </select>
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">

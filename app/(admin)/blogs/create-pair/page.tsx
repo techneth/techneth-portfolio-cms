@@ -6,18 +6,12 @@ import Link from 'next/link';
 import { ArrowLeft, Save, Globe, X, Plus, Star, Link2, Upload } from 'lucide-react';
 import { createBlogPair, BlogFormData } from '../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
+import CategorySelect from '@/components/admin/CategorySelect';
+import { getNlCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
 const MarkdownEditor = dynamic(() => import('@/components/admin/MarkdownEditor'), { ssr: false });
-
-const CATEGORIES = [
-    'Custom Web Development',
-    'Mobile App Development',
-    'Product Design',
-    'UI-UX Design',
-    'Tech Partnership & Consultation',
-];
 
 function emptyForm(isEnglish: boolean): BlogFormData {
     return { title: '', slug: '', excerpt: '', content: '', featured_image: '', status: 'draft', seo_title: '', seo_description: '', seo_keywords: [], category: '', featured: false, is_english: isEnglish, author_name: '', pair_id: null };
@@ -158,7 +152,7 @@ export default function CreateBlogPairPage() {
             const featImg = useSharedImage ? sharedImage : undefined;
             await createBlogPair(
                 { ...enForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
-                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
+                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: getNlCategory(sharedCategory), author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
             );
             toast.success('Both blog posts created and linked!', { id: toastId });
             router.push('/blogs');
@@ -191,10 +185,7 @@ export default function CreateBlogPairPage() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select value={sharedCategory} onChange={(e) => setSharedCategory(e.target.value)} className="input-field w-full">
-                            <option value="">Select category</option>
-                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

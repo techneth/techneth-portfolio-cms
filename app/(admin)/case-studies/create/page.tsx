@@ -8,6 +8,8 @@ import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { createCaseStudy, CaseStudyFormData } from '../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
+import CategorySelect from '@/components/admin/CategorySelect';
+import { getNlCategory, getEnCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -38,6 +40,7 @@ export default function CreateCaseStudyPage() {
         is_english: true,  // default to English
         pair_id: null,
     });
+    const [selectedEnCategory, setSelectedEnCategory] = useState('');
     const [techInput, setTechInput] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
@@ -56,10 +59,12 @@ export default function CreateCaseStudyPage() {
                 ...prev,
                 is_english: lang === 'en',
                 pair_id: pairId || null,
-                ...(category ? { category } : {}),
                 ...(client ? { client_name: client } : {}),
                 ...(industry ? { industry } : {}),
             }));
+            if (category) {
+                setSelectedEnCategory(getEnCategory(category));
+            }
         }
     }, []);
 
@@ -124,7 +129,7 @@ export default function CreateCaseStudyPage() {
             toast.error('Please enter a slug');
             return;
         }
-        if (!formData.category) {
+        if (!selectedEnCategory) {
             toast.error('Please select a category');
             return;
         }
@@ -178,8 +183,10 @@ export default function CreateCaseStudyPage() {
                 formData.title
             );
 
+            const categoryToSave = formData.is_english ? selectedEnCategory : getNlCategory(selectedEnCategory);
             await createCaseStudy({
                 ...formData,
+                category: categoryToSave,
                 content: processedContent,
                 featured_image: imageUrl,
                 status
@@ -274,21 +281,11 @@ export default function CreateCaseStudyPage() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Category *
                             </label>
-                            <select
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
+                            <CategorySelect
+                                value={selectedEnCategory}
+                                onChange={setSelectedEnCategory}
                                 required
-                            >
-                                <option value="" disabled>Select a category</option>
-                                <option value="Custom Web Development">Custom Web Development</option>
-                                <option value="Mobile App Development">Mobile App Development</option>
-                                <option value="Custom Software Development">Custom Software Development</option>
-                                <option value="Product Design">Product Design</option>
-                                <option value="UI-UX Design">UI-UX Design</option>
-                                <option value="Tech Partnership & Consultation">Tech Partnership & Consultation</option>
-                                <option value="Information">Information</option>
-                            </select>
+                            />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
