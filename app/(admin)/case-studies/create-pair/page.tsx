@@ -142,13 +142,22 @@ export default function CreateCaseStudyPairPage() {
     const handleSubmit = async () => {
         if (!enForm.title || !enForm.slug || !nlForm.title || !nlForm.slug) { toast.error('Both versions must have a title and slug.'); return; }
         if (!enForm.content || !nlForm.content) { toast.error('Both versions need content.'); return; }
+
+        // Auto-resolve slug collision: append "-nl" to NL slug if it matches EN slug
+        let resolvedNlForm = nlForm;
+        if (enForm.slug === nlForm.slug) {
+            resolvedNlForm = { ...nlForm, slug: `${nlForm.slug}-nl` };
+            setNlForm(resolvedNlForm);
+            toast(`NL slug was the same as EN — automatically changed to "${resolvedNlForm.slug}"`, { icon: 'ℹ️' });
+        }
+
         const toastId = toast.loading('Creating paired case studies...');
         setLoading(true);
         try {
             const featImg = useSharedImage ? sharedImage : undefined;
             await createCaseStudyPair(
                 { ...enForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
-                { ...nlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
+                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
             );
             toast.success('Both case studies created and linked!', { id: toastId });
             router.push('/case-studies');

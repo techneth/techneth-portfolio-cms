@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export interface CaseStudyFormData {
     title: string;
@@ -59,6 +59,9 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -66,23 +69,39 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
 export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: CaseStudyFormData) {
     const user = await getCurrentUser();
     if (!user || !canPerformAction(user, 'create', 'case_study')) throw new Error('Unauthorized');
+
+    if (enForm.slug === nlForm.slug) {
+        throw new Error(`Both versions have the same slug "${enForm.slug}". The Dutch version needs a different slug (e.g. "${enForm.slug}-nl").`);
+    }
+
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
     const { data: enData, error: enError } = await supabase
         .from('case_studies')
         .insert({ ...enForm, is_english: true, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (enError) throw enError;
+    if (enError) {
+        if (enError.code === '23505') throw new Error(`A case study with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
+        throw enError;
+    }
 
     const { data: nlData, error: nlError } = await supabase
         .from('case_studies')
         .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (nlError) throw nlError;
+    if (nlError) {
+        // Roll back the EN post to avoid orphaned records
+        await supabase.from('case_studies').delete().eq('id', enData.id);
+        if (nlError.code === '23505') throw new Error(`A case study with slug "${nlForm.slug}" already exists. Please use a different slug for the Dutch version.`);
+        throw nlError;
+    }
 
     await supabase.from('case_studies').update({ pair_id: enData.id }).eq('id', enData.id);
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return { en: enData, nl: nlData };
 }
 
@@ -100,6 +119,7 @@ export async function linkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
 }
 
 /** Remove the translation pairing from both posts. */
@@ -116,6 +136,7 @@ export async function unlinkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
 }
 
 export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
@@ -166,6 +187,10 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -208,11 +233,15 @@ export async function deleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function restoreCaseStudy(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'update', 'case_study')) throw new Error('Unauthorized');
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
@@ -237,12 +266,16 @@ export async function restoreCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
 export async function permanentlyDeleteCaseStudy(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'delete', 'case_study')) throw new Error('Unauthorized');
 
     const { createAdminClient } = await import('@/lib/supabase/server');
     const adminClient = createAdminClient() as SupabaseClient<any>;
@@ -302,6 +335,9 @@ export async function permanentlyDeleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
@@ -351,6 +387,8 @@ export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
     });
 
     revalidatePath('/case-studies');
+    revalidateTag('case-studies', 'default');
+    revalidateTag(`case-study-${id}`, 'default');
     return data;
 }
 
@@ -380,7 +418,7 @@ export async function getCaseStudies(filters?: {
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {
-                if (user.role !== 'super_admin') return [];
+                if (!canPerformAction(user, 'delete', 'case_study')) return [];
                 query = query.not('deleted_at', 'is', null);
             } else {
                 query = query.is('deleted_at', null);
@@ -426,19 +464,22 @@ export async function getCaseStudy(id: string): Promise<Database['public']['Tabl
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const { data, error } = await supabase
-        .from('case_studies')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const fetchCaseStudy = unstable_cache(
+        async () => {
+            const { data, error } = await supabase
+                .from('case_studies')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-    if (error) throw error;
-    if (!data) throw new Error('Case study not found');
+            if (error) throw error;
+            if (!data) throw new Error('Case study not found');
 
-    // Editors can view all case studies
-    // if (user.role === 'editor' && data.created_by !== user.id) {
-    //     throw new Error('Forbidden');
-    // }
+            return data;
+        },
+        [`case-study-${id}`],
+        { tags: [`case-study-${id}`, 'case-studies'], revalidate: 300 }
+    );
 
-    return data as Database['public']['Tables']['case_studies']['Row'];
+    return fetchCaseStudy() as Promise<Database['public']['Tables']['case_studies']['Row']>;
 }

@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, unstable_cache } from 'next/cache';
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export interface BlogFormData {
     title: string;
@@ -57,6 +57,9 @@ export async function createBlog(formData: BlogFormData) {
     });
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -64,6 +67,11 @@ export async function createBlog(formData: BlogFormData) {
 export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData) {
     const user = await getCurrentUser();
     if (!user || !canPerformAction(user, 'create', 'blog')) throw new Error('Unauthorized');
+
+    if (enForm.slug === nlForm.slug) {
+        throw new Error(`Both versions have the same slug "${enForm.slug}". The Dutch version needs a different slug (e.g. "${enForm.slug}-nl").`);
+    }
+
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
     // Insert English post first
@@ -71,19 +79,30 @@ export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData)
         .from('blogs')
         .insert({ ...enForm, is_english: true, author_id: user.id, author_name: enForm.author_name || user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (enError) throw enError;
+    if (enError) {
+        if (enError.code === '23505') throw new Error(`A blog with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
+        throw enError;
+    }
 
     // Insert Dutch post, pair_id → English post id
     const { data: nlData, error: nlError } = await supabase
         .from('blogs')
         .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: nlForm.author_name || user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (nlError) throw nlError;
+    if (nlError) {
+        // Roll back the EN post to avoid orphaned records
+        await supabase.from('blogs').delete().eq('id', enData.id);
+        if (nlError.code === '23505') throw new Error(`A blog with slug "${nlForm.slug}" already exists. Please use a different slug for the Dutch version.`);
+        throw nlError;
+    }
 
     // Also set pair_id on the English post (self-anchored)
     await supabase.from('blogs').update({ pair_id: enData.id }).eq('id', enData.id);
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return { en: enData, nl: nlData };
 }
 
@@ -102,6 +121,7 @@ export async function linkBlogPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
 }
 
 /** Remove the translation pairing from both posts. */
@@ -118,6 +138,7 @@ export async function unlinkBlogPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
 }
 
 export async function updateBlog(id: string, formData: BlogFormData) {
@@ -171,6 +192,10 @@ export async function updateBlog(id: string, formData: BlogFormData) {
 
     revalidatePath('/blogs');
     revalidatePath(`/blogs/${id}/edit`);
+    revalidateTag('blogs', 'default');
+    revalidateTag(`blog-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
@@ -214,6 +239,10 @@ export async function deleteBlog(id: string) {
     });
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag(`blog-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function toggleFeaturedBlog(id: string, featured: boolean) {
@@ -263,12 +292,14 @@ export async function toggleFeaturedBlog(id: string, featured: boolean) {
     });
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag(`blog-${id}`, 'default');
     return data;
 }
 
 export async function restoreBlog(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'update', 'blog')) throw new Error('Unauthorized');
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
@@ -293,12 +324,16 @@ export async function restoreBlog(id: string) {
     });
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag(`blog-${id}`, 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
     return data;
 }
 
 export async function permanentlyDeleteBlog(id: string) {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'super_admin') throw new Error('Unauthorized');
+    if (!user || !canPerformAction(user, 'delete', 'blog')) throw new Error('Unauthorized');
 
     const { createAdminClient } = await import('@/lib/supabase/server');
     const adminClient = createAdminClient() as SupabaseClient<any>;
@@ -358,6 +393,9 @@ export async function permanentlyDeleteBlog(id: string) {
     });
 
     revalidatePath('/blogs');
+    revalidateTag('blogs', 'default');
+    revalidateTag('dashboard-stats', 'default');
+    revalidateTag('activity-logs', 'default');
 }
 
 export async function getBlogs(filters?: {
@@ -387,7 +425,7 @@ export async function getBlogs(filters?: {
                 .order('created_at', { ascending: false });
 
             if (filters?.deleted) {
-                if (user.role !== 'super_admin') return [];
+                if (!canPerformAction(user, 'delete', 'blog')) return [];
                 query = query.not('deleted_at', 'is', null);
             } else {
                 query = query.is('deleted_at', null);
@@ -433,19 +471,22 @@ export async function getBlog(id: string): Promise<Database['public']['Tables'][
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const { data, error } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const fetchBlog = unstable_cache(
+        async () => {
+            const { data, error } = await supabase
+                .from('blogs')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-    if (error) throw error;
-    if (!data) throw new Error('Blog not found');
+            if (error) throw error;
+            if (!data) throw new Error('Blog not found');
 
-    // Editors can view all blogs
-    // if (user.role === 'editor' && data.created_by !== user.id) {
-    //     throw new Error('Forbidden');
-    // }
+            return data;
+        },
+        [`blog-${id}`],
+        { tags: [`blog-${id}`, 'blogs'], revalidate: 300 }
+    );
 
-    return data as Database['public']['Tables']['blogs']['Row'];
+    return fetchBlog() as Promise<Database['public']['Tables']['blogs']['Row']>;
 }

@@ -143,13 +143,22 @@ export default function CreateBlogPairPage() {
     const handleSubmit = async () => {
         if (!enForm.title || !enForm.slug || !nlForm.title || !nlForm.slug) { toast.error('Both versions must have a title and slug.'); return; }
         if (!enForm.content || !nlForm.content) { toast.error('Both versions need content.'); return; }
+
+        // Auto-resolve slug collision: append "-nl" to NL slug if it matches EN slug
+        let resolvedNlForm = nlForm;
+        if (enForm.slug === nlForm.slug) {
+            resolvedNlForm = { ...nlForm, slug: `${nlForm.slug}-nl` };
+            setNlForm(resolvedNlForm);
+            toast(`NL slug was the same as EN — automatically changed to "${resolvedNlForm.slug}"`, { icon: 'ℹ️' });
+        }
+
         const toastId = toast.loading('Creating paired blog posts...');
         setLoading(true);
         try {
             const featImg = useSharedImage ? sharedImage : undefined;
             await createBlogPair(
                 { ...enForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
-                { ...nlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
+                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, author_name: sharedAuthor, status: sharedStatus, featured: sharedFeatured },
             );
             toast.success('Both blog posts created and linked!', { id: toastId });
             router.push('/blogs');

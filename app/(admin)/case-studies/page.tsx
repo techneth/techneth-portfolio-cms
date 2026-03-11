@@ -12,28 +12,33 @@ import Modal from '@/components/admin/Modal';
 type CS = any;
 
 function groupByPairId(items: CS[]): CS[][] {
-    const byId = new Map<string, CS>();
-    for (const cs of items) byId.set(cs.id, cs);
-
     const visited = new Set<string>();
     const groups: CS[][] = [];
 
     for (const cs of items) {
         if (visited.has(cs.id)) continue;
 
-        const directPartner = cs.pair_id ? byId.get(cs.pair_id) : null;
-        const reversePartner = !directPartner
-            ? items.find((x) => x.pair_id === cs.id && !visited.has(x.id))
-            : null;
+        let partner: CS | null = null;
 
-        const partner = directPartner ?? reversePartner ?? null;
+        if (cs.pair_id) {
+            // Pattern 1: find another item sharing the exact same pair_id value (shared-key model)
+            partner = items.find((x) => x.id !== cs.id && x.pair_id === cs.pair_id && !visited.has(x.id)) ?? null;
 
-        if (partner && !visited.has(partner.id)) {
+            // Pattern 3 fallback: pair_id points directly at the other item's id (mutual reference)
+            if (!partner && cs.pair_id !== cs.id) {
+                partner = items.find((x) => x.id === cs.pair_id && !visited.has(x.id)) ?? null;
+            }
+        } else {
+            // Pattern 2: cs has no pair_id — check if another item's pair_id points to cs
+            partner = items.find((x) => x.pair_id === cs.id && !visited.has(x.id)) ?? null;
+        }
+
+        if (partner) {
             const group = cs.is_english ? [cs, partner] : [partner, cs];
             groups.push(group);
             visited.add(cs.id);
             visited.add(partner.id);
-        } else if (!partner) {
+        } else {
             groups.push([cs]);
             visited.add(cs.id);
         }

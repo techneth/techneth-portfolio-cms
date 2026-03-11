@@ -14,31 +14,39 @@ import { createClient } from '@/lib/supabase/client';
 type Blog = any;
 
 /** Group blogs into EN/NL pairs.
- *  Checks both directions: A.pair_id===B.id and B.pair_id===A.id.
+ *  Handles three pairing patterns:
+ *  1. Shared pair_id: both A and B have pair_id === A.id (A is self-referencing) — used by createBlogPair/linkBlogPair
+ *  2. Reverse lookup: A has pair_id=null, B has pair_id===A.id (older data)
+ *  3. Direct point-to: A.pair_id===B.id, B.pair_id===A.id (mutual reference)
  */
 function groupByPairId(blogs: Blog[]): Blog[][] {
-    const byId = new Map<string, Blog>();
-    for (const b of blogs) byId.set(b.id, b);
-
     const visited = new Set<string>();
     const groups: Blog[][] = [];
 
     for (const b of blogs) {
         if (visited.has(b.id)) continue;
 
-        const directPartner = b.pair_id ? byId.get(b.pair_id) : null;
-        const reversePartner = !directPartner
-            ? blogs.find((x) => x.pair_id === b.id && !visited.has(x.id))
-            : null;
+        let partner: Blog | null = null;
 
-        const partner = directPartner ?? reversePartner ?? null;
+        if (b.pair_id) {
+            // Pattern 1: find another blog sharing the exact same pair_id value (shared-key model)
+            partner = blogs.find((x) => x.id !== b.id && x.pair_id === b.pair_id && !visited.has(x.id)) ?? null;
 
-        if (partner && !visited.has(partner.id)) {
+            // Pattern 3 fallback: pair_id points directly at the other post's id (mutual reference)
+            if (!partner && b.pair_id !== b.id) {
+                partner = blogs.find((x) => x.id === b.pair_id && !visited.has(x.id)) ?? null;
+            }
+        } else {
+            // Pattern 2: b has no pair_id — check if another blog's pair_id points to b
+            partner = blogs.find((x) => x.pair_id === b.id && !visited.has(x.id)) ?? null;
+        }
+
+        if (partner) {
             const group = b.is_english ? [b, partner] : [partner, b];
             groups.push(group);
             visited.add(b.id);
             visited.add(partner.id);
-        } else if (!partner) {
+        } else {
             groups.push([b]);
             visited.add(b.id);
         }

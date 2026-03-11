@@ -37,7 +37,7 @@ export async function uploadFile(formData: FormData) {
         .from(bucket)
         .upload(sanitizedPath, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: true
         });
 
     if (error) {
