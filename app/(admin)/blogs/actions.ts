@@ -67,6 +67,11 @@ export async function createBlog(formData: BlogFormData) {
 export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData) {
     const user = await getCurrentUser();
     if (!user || !canPerformAction(user, 'create', 'blog')) throw new Error('Unauthorized');
+
+    if (enForm.slug === nlForm.slug) {
+        throw new Error(`Both versions have the same slug "${enForm.slug}". The Dutch version needs a different slug (e.g. "${enForm.slug}-nl").`);
+    }
+
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
     // Insert English post first
@@ -74,14 +79,22 @@ export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData)
         .from('blogs')
         .insert({ ...enForm, is_english: true, author_id: user.id, author_name: enForm.author_name || user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (enError) throw enError;
+    if (enError) {
+        if (enError.code === '23505') throw new Error(`A blog with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
+        throw enError;
+    }
 
     // Insert Dutch post, pair_id → English post id
     const { data: nlData, error: nlError } = await supabase
         .from('blogs')
         .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: nlForm.author_name || user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (nlError) throw nlError;
+    if (nlError) {
+        // Roll back the EN post to avoid orphaned records
+        await supabase.from('blogs').delete().eq('id', enData.id);
+        if (nlError.code === '23505') throw new Error(`A blog with slug "${nlForm.slug}" already exists. Please use a different slug for the Dutch version.`);
+        throw nlError;
+    }
 
     // Also set pair_id on the English post (self-anchored)
     await supabase.from('blogs').update({ pair_id: enData.id }).eq('id', enData.id);

@@ -69,19 +69,32 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
 export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: CaseStudyFormData) {
     const user = await getCurrentUser();
     if (!user || !canPerformAction(user, 'create', 'case_study')) throw new Error('Unauthorized');
+
+    if (enForm.slug === nlForm.slug) {
+        throw new Error(`Both versions have the same slug "${enForm.slug}". The Dutch version needs a different slug (e.g. "${enForm.slug}-nl").`);
+    }
+
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
     const { data: enData, error: enError } = await supabase
         .from('case_studies')
         .insert({ ...enForm, is_english: true, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (enError) throw enError;
+    if (enError) {
+        if (enError.code === '23505') throw new Error(`A case study with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
+        throw enError;
+    }
 
     const { data: nlData, error: nlError } = await supabase
         .from('case_studies')
         .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
-    if (nlError) throw nlError;
+    if (nlError) {
+        // Roll back the EN post to avoid orphaned records
+        await supabase.from('case_studies').delete().eq('id', enData.id);
+        if (nlError.code === '23505') throw new Error(`A case study with slug "${nlForm.slug}" already exists. Please use a different slug for the Dutch version.`);
+        throw nlError;
+    }
 
     await supabase.from('case_studies').update({ pair_id: enData.id }).eq('id', enData.id);
 
