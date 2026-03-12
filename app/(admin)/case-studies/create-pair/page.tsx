@@ -6,18 +6,12 @@ import Link from 'next/link';
 import { ArrowLeft, Save, Globe, X, Plus, Star, Link2, Upload } from 'lucide-react';
 import { createCaseStudyPair, CaseStudyFormData } from '../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
+import CategorySelect from '@/components/admin/CategorySelect';
+import { getNlCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
 const MarkdownEditor = dynamic(() => import('@/components/admin/MarkdownEditor'), { ssr: false });
-
-const CATEGORIES = [
-    'Custom Web Development',
-    'Mobile App Development',
-    'Product Design',
-    'UI-UX Design',
-    'Tech Partnership & Consultation',
-];
 
 function emptyForm(isEnglish: boolean): CaseStudyFormData {
     return { title: '', slug: '', category: '', client_name: '', industry: '', excerpt: '', content: '', featured_image: '', technologies: [], keywords: [], results: {}, status: 'draft', featured: false, seo_title: '', seo_description: '', is_english: isEnglish, pair_id: null };
@@ -157,7 +151,7 @@ export default function CreateCaseStudyPairPage() {
             const featImg = useSharedImage ? sharedImage : undefined;
             await createCaseStudyPair(
                 { ...enForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
-                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: sharedCategory, client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
+                { ...resolvedNlForm, ...(featImg !== undefined ? { featured_image: featImg } : {}), category: getNlCategory(sharedCategory), client_name: sharedClient, industry: sharedIndustry, status: sharedStatus, featured: sharedFeatured, technologies: sharedTech },
             );
             toast.success('Both case studies created and linked!', { id: toastId });
             router.push('/case-studies');
@@ -186,10 +180,7 @@ export default function CreateCaseStudyPairPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select value={sharedCategory} onChange={(e) => setSharedCategory(e.target.value)} className="input-field w-full">
-                            <option value="">Select category</option>
-                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
