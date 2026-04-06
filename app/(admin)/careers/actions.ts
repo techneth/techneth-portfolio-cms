@@ -461,14 +461,18 @@ export async function deleteJob(id: string): Promise<void> {
         throw new Error(`Failed to delete job: ${deleteJobError.message}`);
     }
 
-    await logActivity(
-        'delete',
-        'careers',
-        `Deleted job posting (${id}) and its applications`
-    );
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'delete',
+        resourceType: 'job',
+        resourceId: id,
+        resourceTitle: `Deleted job posting (${id}) and its applications`
+    });
 
-    revalidateTag('jobs');
-    revalidateTag('job-applications');
+    revalidateTag('jobs', 'default');
+    revalidateTag('job-applications', 'default');
     revalidatePath('/careers');
 }
 
@@ -712,7 +716,6 @@ export async function sendBulkApplicationEmail(
         userRole: user.role,
         actionType: 'update',
         resourceType: 'job_application',
-        resourceId: null,
         resourceTitle: 'Bulk applicant email',
         changes: {
             total: list.length,

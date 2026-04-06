@@ -921,17 +921,17 @@ export default function CareersPage() {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-700 block mb-1">Portfolio</span>
-                                    {selectedApplicant.portfolio_url ? (
-                                        <a href={selectedApplicant.portfolio_url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate block">
-                                            {selectedApplicant.portfolio_url}
+                                    {selectedApplicant.portfolio ? (
+                                        <a href={selectedApplicant.portfolio} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate block">
+                                            {selectedApplicant.portfolio}
                                         </a>
                                     ) : <span className="text-gray-400">Not provided</span>}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-700 block mb-1">LinkedIn Profile</span>
-                                    {selectedApplicant.linkedin_url ? (
-                                        <a href={selectedApplicant.linkedin_url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate block">
-                                            {selectedApplicant.linkedin_url}
+                                    {selectedApplicant.linkedin ? (
+                                        <a href={selectedApplicant.linkedin} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate block">
+                                            {selectedApplicant.linkedin}
                                         </a>
                                     ) : <span className="text-gray-400">Not provided</span>}
                                 </div>
