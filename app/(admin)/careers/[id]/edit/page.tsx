@@ -126,13 +126,13 @@ export default function EditJobPage() {
 
     const confirmDelete = async () => {
         setIsDeleteModalOpen(false);
-        const toastId = toast.loading('Deactivating job...');
+        const toastId = toast.loading('Deleting job and applications permanently...');
         try {
             await deleteJob(id);
-            toast.success('Job deactivated successfully', { id: toastId });
+            toast.success('Job and applications deleted successfully', { id: toastId });
             router.push('/careers');
         } catch (error: any) {
-            toast.error(error.message || 'Failed to deactivate job', { id: toastId });
+            toast.error(error.message || 'Failed to delete job', { id: toastId });
         }
     };
 

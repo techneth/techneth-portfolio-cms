@@ -1,21 +1,62 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+
+function sanitizePathPart(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/-+/g, '-');
+}
+
+async function uploadApplicationFile(
+    supabase: any,
+    file: File,
+    jobId: string,
+    applicantName: string,
+    fileType: 'resume' | 'cover-letter'
+) {
+    if (!file || !file.name || file.size <= 0) return null;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const safeApplicant = sanitizePathPart(applicantName || 'applicant');
+    const safeJob = sanitizePathPart(jobId || 'unknown-job');
+    const filePath = `${safeJob}/${safeApplicant}/${Date.now()}-${fileType}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('job-applications')
+        .upload(filePath, buffer, {
+            contentType: file.type || 'application/octet-stream',
+            upsert: false,
+        });
+
+    if (uploadError) {
+        throw new Error(`Failed to upload ${fileType} file: ${uploadError.message}`);
+    }
+
+    const { data: publicData } = supabase.storage
+        .from('job-applications')
+        .getPublicUrl(filePath);
+
+    return {
+        fileName: file.name,
+        filePath,
+        fileUrl: publicData.publicUrl,
+    };
+}
 
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
 
-        const jobId = formData.get('jobId') as string || 'Not provided';
-        const jobTitle = formData.get('jobTitle') as string || 'Not specified';
-        const fullName = formData.get('fullName') as string || 'Not provided';
-        const email = formData.get('email') as string || 'Not provided';
-        const phone = formData.get('phone') as string || 'Not provided';
-        const experience = formData.get('experience') as string || 'Not provided';
-        const expectedSalary = formData.get('expectedSalary') as string || 'Not provided';
-        const linkedin = formData.get('linkedin') as string || 'Not provided';
-        const portfolio = formData.get('portfolio') as string || 'Not provided';
-        const additionalInfo = formData.get('additionalInfo') as string || 'No additional info provided';
+        const jobId = ((formData.get('jobId') as string) || '').trim();
+        const jobTitle = ((formData.get('jobTitle') as string) || 'Not specified').trim();
+        const fullName = ((formData.get('fullName') as string) || '').trim();
+        const email = ((formData.get('email') as string) || '').trim();
+        const phone = ((formData.get('phone') as string) || '').trim();
+        const experience = ((formData.get('experience') as string) || '').trim();
+        const expectedSalary = ((formData.get('expectedSalary') as string) || '').trim();
+        const linkedin = ((formData.get('linkedin') as string) || '').trim();
+        const portfolio = ((formData.get('portfolio') as string) || '').trim();
+        const additionalInfo = ((formData.get('additionalInfo') as string) || '').trim();
 
         // Get the attachments
         const resumeFile = formData.get('resume') as File | null;
@@ -28,127 +69,43 @@ export async function POST(request: Request) {
             );
         }
 
-        // Prepare email attachments
-        const attachments = [];
-
-        if (resumeFile && resumeFile.name && resumeFile.size > 0) {
-            const arrayBuffer = await resumeFile.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            attachments.push({
-                filename: resumeFile.name,
-                content: buffer,
-                contentType: resumeFile.type,
-            });
-        }
-
-        if (coverLetterFile && coverLetterFile.name && coverLetterFile.size > 0) {
-            const arrayBuffer = await coverLetterFile.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            attachments.push({
-                filename: coverLetterFile.name,
-                content: buffer,
-                contentType: coverLetterFile.type,
-            });
-        }
-
         const supabase: any = createAdminClient();
 
-        // Fetch SMTP configuration from the database
-        const { data: smtpData } = await supabase
-            .from('settings')
-            .select('value')
-            .eq('key', 'smtp_config')
-            .single();
+        const uploadedResume = resumeFile
+            ? await uploadApplicationFile(supabase, resumeFile, jobId, fullName, 'resume')
+            : null;
+        const uploadedCoverLetter = coverLetterFile
+            ? await uploadApplicationFile(supabase, coverLetterFile, jobId, fullName, 'cover-letter')
+            : null;
 
-        let smtpConfig = smtpData?.value;
-
-        // Fallback to hardcoded defaults if not configured
-        if (!smtpConfig) {
-            smtpConfig = {
-                host: 'smtp.gmail.com',
-                port: 587,
-                secure: false,
-                auth: {
-                    user: 'dev.techneth@gmail.com',
-                    pass: 'vunm bmbt msju xkqd',
-                },
-                fromEmail: '"No Reply Techneth" <dev.techneth@gmail.com>'
-            };
-        }
-
-        // Configure nodemailer transporter using SMTP connection details
-        const transporter = nodemailer.createTransport({
-            host: smtpConfig.host,
-            port: smtpConfig.port,
-            secure: smtpConfig.secure,
-            auth: smtpConfig.auth,
+        const { error: insertError } = await supabase.from('job_applications').insert({
+            job_id: jobId || null,
+            job_title_snapshot: jobTitle,
+            full_name: fullName,
+            email,
+            phone: phone || null,
+            experience: experience || null,
+            expected_salary: expectedSalary || null,
+            linkedin: linkedin || null,
+            portfolio: portfolio || null,
+            additional_info: additionalInfo || null,
+            resume_file_name: uploadedResume?.fileName || null,
+            resume_file_path: uploadedResume?.filePath || null,
+            resume_file_url: uploadedResume?.fileUrl || null,
+            cover_letter_file_name: uploadedCoverLetter?.fileName || null,
+            cover_letter_file_path: uploadedCoverLetter?.filePath || null,
+            cover_letter_file_url: uploadedCoverLetter?.fileUrl || null,
+            status: 'new',
         });
 
-        const htmlTemplate = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-                <h2 style="color: #0056b3;">New Career Application Received</h2>
-                <p style="font-size: 16px; margin-bottom: 20px;">
-                    A new application has been submitted for the position of <strong>${jobTitle}</strong> (Job ID: ${jobId}).
-                </p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; width: 35%;">Full Name</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${fullName}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Email</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;"><a href="mailto:${email}">${email}</a></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Phone</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${phone}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Experience</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${experience}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Expected Salary</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${expectedSalary}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">LinkedIn</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">
-                            ${linkedin !== 'Not provided' ? `<a href="${linkedin}" target="_blank">${linkedin}</a>` : 'Not provided'}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Portfolio</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">
-                            ${portfolio && portfolio !== 'Not provided' ? `<a href="${portfolio}" target="_blank">${portfolio}</a>` : 'Not provided'}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; vertical-align: top;">Additional Info</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; white-space: pre-wrap;">${additionalInfo}</td>
-                    </tr>
-                </table>
-                <p style="margin-top: 20px; font-size: 14px; color: #666;">
-                    ${attachments.length > 0 ? `<strong>Attachments:</strong> ${attachments.length} file(s) included with this application.` : 'No attachments were provided.'}
-                </p>
-            </div>
-        `;
+        if (insertError) {
+            throw new Error(insertError.message);
+        }
 
-        const mailOptions = {
-            from: smtpConfig.fromEmail || '"No Reply Techneth" <dev.techneth@gmail.com>',
-            to: 'hr@techneth.com',
-            cc: 'rahat@techneth.com',
-            bcc: 'fahad@techneth.com',
-            replyTo: email,
-            subject: `${jobTitle} Job Application: ${fullName} (${jobId})`,
-            html: htmlTemplate,
-            attachments: attachments,
-        };
-
-        // Send email
-        await transporter.sendMail(mailOptions);
-
-        return NextResponse.json({ success: true, message: 'Application submitted successfully' }, { status: 200 });
+        return NextResponse.json(
+            { success: true, message: 'Application submitted successfully' },
+            { status: 200 }
+        );
     } catch (error) {
         console.error('Error submitting application:', error);
         return NextResponse.json(
