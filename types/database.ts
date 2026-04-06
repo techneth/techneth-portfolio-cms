@@ -203,6 +203,142 @@ export interface Database {
                     updated_by?: string | null
                 }
             }
+            jobs: {
+                Row: {
+                    id: string
+                    title: string
+                    department: string
+                    location: string
+                    employment_type: 'full-time' | 'part-time' | 'contract' | 'internship'
+                    experience_level: 'entry' | 'mid' | 'senior' | 'lead' | null
+                    description: string
+                    requirements: string[]
+                    responsibilities: string[]
+                    benefits: string[]
+                    salary_range: string | null
+                    is_remote: boolean
+                    is_active: boolean
+                    application_deadline: string | null
+                    created_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    title: string
+                    department: string
+                    location: string
+                    employment_type: 'full-time' | 'part-time' | 'contract' | 'internship'
+                    experience_level?: 'entry' | 'mid' | 'senior' | 'lead' | null
+                    description: string
+                    requirements?: string[]
+                    responsibilities?: string[]
+                    benefits?: string[]
+                    salary_range?: string | null
+                    is_remote?: boolean
+                    is_active?: boolean
+                    application_deadline?: string | null
+                    created_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    title?: string
+                    department?: string
+                    location?: string
+                    employment_type?: 'full-time' | 'part-time' | 'contract' | 'internship'
+                    experience_level?: 'entry' | 'mid' | 'senior' | 'lead' | null
+                    description?: string
+                    requirements?: string[]
+                    responsibilities?: string[]
+                    benefits?: string[]
+                    salary_range?: string | null
+                    is_remote?: boolean
+                    is_active?: boolean
+                    application_deadline?: string | null
+                    created_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            job_applications: {
+                Row: {
+                    id: string
+                    job_id: string | null
+                    job_title_snapshot: string
+                    full_name: string
+                    email: string
+                    phone: string | null
+                    experience: string | null
+                    expected_salary: string | null
+                    linkedin: string | null
+                    portfolio: string | null
+                    additional_info: string | null
+                    resume_file_name: string | null
+                    resume_file_path: string | null
+                    resume_file_url: string | null
+                    cover_letter_file_name: string | null
+                    cover_letter_file_path: string | null
+                    cover_letter_file_url: string | null
+                    status: 'new' | 'reviewing' | 'shortlisted' | 'rejected' | 'hired'
+                    status_notes: string | null
+                    last_emailed_at: string | null
+                    communication_history: Json
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    job_id?: string | null
+                    job_title_snapshot: string
+                    full_name: string
+                    email: string
+                    phone?: string | null
+                    experience?: string | null
+                    expected_salary?: string | null
+                    linkedin?: string | null
+                    portfolio?: string | null
+                    additional_info?: string | null
+                    resume_file_name?: string | null
+                    resume_file_path?: string | null
+                    resume_file_url?: string | null
+                    cover_letter_file_name?: string | null
+                    cover_letter_file_path?: string | null
+                    cover_letter_file_url?: string | null
+                    status?: 'new' | 'reviewing' | 'shortlisted' | 'rejected' | 'hired'
+                    status_notes?: string | null
+                    last_emailed_at?: string | null
+                    communication_history?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    job_id?: string | null
+                    job_title_snapshot?: string
+                    full_name?: string
+                    email?: string
+                    phone?: string | null
+                    experience?: string | null
+                    expected_salary?: string | null
+                    linkedin?: string | null
+                    portfolio?: string | null
+                    additional_info?: string | null
+                    resume_file_name?: string | null
+                    resume_file_path?: string | null
+                    resume_file_url?: string | null
+                    cover_letter_file_name?: string | null
+                    cover_letter_file_path?: string | null
+                    cover_letter_file_url?: string | null
+                    status?: 'new' | 'reviewing' | 'shortlisted' | 'rejected' | 'hired'
+                    status_notes?: string | null
+                    last_emailed_at?: string | null
+                    communication_history?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
             contact_submissions: {
                 Row: {
                     id: string
