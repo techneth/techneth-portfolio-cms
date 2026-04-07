@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { CATEGORIES } from '@/lib/categories';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Check } from 'lucide-react';
 
 interface CategorySelectProps {
-    value: string;           // English category value
+    value: string;           // Comma-separated English category values
     onChange: (enValue: string) => void;
     required?: boolean;
     className?: string;
@@ -16,6 +16,9 @@ export default function CategorySelect({ value, onChange, required, className }:
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Parse the selected values correctly
+    const selectedLabels = value ? value.split(',').map(v => v.trim()).filter(Boolean) : [];
 
     // Close when clicking outside
     useEffect(() => {
@@ -33,12 +36,24 @@ export default function CategorySelect({ value, onChange, required, className }:
         ? CATEGORIES.filter((c) => c.en.toLowerCase().includes(search.toLowerCase().trim()))
         : CATEGORIES;
 
-    const selectedLabel = value || '';
+    function handleToggle(enValue: string) {
+        let newSelection;
+        if (selectedLabels.includes(enValue)) {
+            newSelection = selectedLabels.filter(v => v !== enValue);
+        } else {
+            newSelection = [...selectedLabels, enValue];
+        }
+        onChange(newSelection.join(', '));
+        // Keep open so users can select multiple
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    }
 
-    function handleSelect(enValue: string) {
-        onChange(enValue);
-        setIsOpen(false);
-        setSearch('');
+    function handleRemove(e: React.MouseEvent, enValue: string) {
+        e.stopPropagation();
+        const newSelection = selectedLabels.filter(v => v !== enValue);
+        onChange(newSelection.join(', '));
     }
 
     function handleClear(e: React.MouseEvent) {
@@ -60,21 +75,39 @@ export default function CategorySelect({ value, onChange, required, className }:
             {/* Trigger row */}
             <div
                 onClick={handleOpen}
-                className={`flex items-center w-full px-3 py-2 border rounded cursor-pointer transition-colors ${
+                className={`flex flex-wrap items-center w-full px-3 py-2 border rounded cursor-pointer transition-colors ${
                     isOpen
                         ? 'border-[#00A99D] ring-2 ring-[#00A99D]/20'
                         : 'border-gray-300 hover:border-gray-400'
-                } bg-white`}
+                } bg-white min-h-[42px]`}
             >
-                <span className={`flex-1 text-sm truncate ${selectedLabel ? 'text-gray-800' : 'text-gray-400'}`}>
-                    {selectedLabel || 'Select a category'}
-                </span>
-                {selectedLabel ? (
+                <div className="flex-1 flex flex-wrap gap-1 items-center overflow-hidden">
+                    {selectedLabels.length > 0 ? (
+                        selectedLabels.map(label => (
+                            <span 
+                                key={label} 
+                                className="inline-flex items-center bg-[#00A99D]/10 text-[#00A99D] text-xs px-2 py-1 rounded border border-[#00A99D]/20"
+                            >
+                                {label}
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleRemove(e, label)}
+                                    className="ml-1 text-[#00A99D] hover:text-red-500 transition-colors"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </span>
+                        ))
+                    ) : (
+                        <span className="text-sm text-gray-400 truncate">Select categories...</span>
+                    )}
+                </div>
+                {selectedLabels.length > 0 ? (
                     <button
                         type="button"
                         onClick={handleClear}
-                        className="ml-1 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                        aria-label="Clear category"
+                        className="ml-2 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        aria-label="Clear categories"
                     >
                         <X size={14} />
                     </button>
@@ -89,7 +122,7 @@ export default function CategorySelect({ value, onChange, required, className }:
                     type="text"
                     value={value}
                     onChange={() => {}}
-                    required
+                    required={selectedLabels.length === 0}
                     tabIndex={-1}
                     aria-hidden
                     className="absolute inset-0 w-full opacity-0 pointer-events-none"
@@ -106,7 +139,7 @@ export default function CategorySelect({ value, onChange, required, className }:
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search categories…"
+                            placeholder="Search categories..."
                             className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-[#00A99D]"
                         />
                     </div>
@@ -116,23 +149,27 @@ export default function CategorySelect({ value, onChange, required, className }:
                         {filtered.length === 0 ? (
                             <li className="px-3 py-2 text-sm text-gray-400 text-center">No categories found</li>
                         ) : (
-                            filtered.map((cat) => (
-                                <li
-                                    key={cat.en}
-                                    onMouseDown={(e) => {
-                                        // Use mousedown so it fires before blur on the search input
-                                        e.preventDefault();
-                                        handleSelect(cat.en);
-                                    }}
-                                    className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
-                                        cat.en === value
-                                            ? 'bg-[#00A99D]/10 text-[#007A73] font-medium'
-                                            : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {cat.en}
-                                </li>
-                            ))
+                            filtered.map((cat) => {
+                                const isSelected = selectedLabels.includes(cat.en);
+                                return (
+                                    <li
+                                        key={cat.en}
+                                        onMouseDown={(e) => {
+                                            // Use mousedown so it fires before blur on the search input
+                                            e.preventDefault();
+                                            handleToggle(cat.en);
+                                        }}
+                                        className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${
+                                            isSelected 
+                                                ? 'bg-[#00A99D]/10 text-[#007A73] font-medium' 
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <span className="truncate">{cat.en}</span>
+                                        {isSelected && <Check size={14} className="text-[#00A99D] ml-2 flex-shrink-0" />}
+                                    </li>
+                                );
+                            })
                         )}
                     </ul>
                 </div>

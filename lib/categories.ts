@@ -137,26 +137,33 @@ export const CATEGORIES: Category[] = [
 ];
 
 /**
- * Given an English category label, returns the corresponding Dutch label.
+ * Given a comma-separated string of English category labels, returns the corresponding Dutch labels joined by commas.
  * Falls back to the input value if no match is found.
  */
 export function getNlCategory(enValue: string): string {
-    const match = CATEGORIES.find((c) => c.en === enValue);
-    return match ? match.nl : enValue;
+    if (!enValue) return '';
+    return enValue.split(',').map(v => {
+        const match = CATEGORIES.find((c) => c.en === v.trim());
+        return match ? match.nl : v.trim();
+    }).join(', ');
 }
 
 /**
- * Given a stored category value (which may be English or Dutch), returns the English label.
+ * Given a stored comma-separated category value (which may be English or Dutch), returns the English labels joined by commas.
  * This is used when loading an existing post for editing.
  * Falls back to the input value if no match is found.
  */
 export function getEnCategory(storedValue: string): string {
-    // Try matching as English first
-    const enMatch = CATEGORIES.find((c) => c.en === storedValue);
-    if (enMatch) return enMatch.en;
-    // Try matching as Dutch (for existing posts stored in Dutch)
-    const nlMatch = CATEGORIES.find((c) => c.nl === storedValue);
-    if (nlMatch) return nlMatch.en;
-    // Return as-is (legacy value not in the new list)
-    return storedValue;
+    if (!storedValue) return '';
+    return storedValue.split(',').map(v => {
+        const val = v.trim();
+        // Try matching as English first
+        const enMatch = CATEGORIES.find((c) => c.en === val);
+        if (enMatch) return enMatch.en;
+        // Try matching as Dutch (for existing posts stored in Dutch)
+        const nlMatch = CATEGORIES.find((c) => c.nl === val);
+        if (nlMatch) return nlMatch.en;
+        // Return as-is (legacy value not in the new list)
+        return val;
+    }).join(', ');
 }
