@@ -46,17 +46,31 @@ export default function QuillEditor({
 
         // 3. Register Quill Modules ONLY after mounting on client
         const initQuill = async () => {
-            const { Quill } = await import('react-quill-new');
+            let Quill;
+            try {
+                const mod = await import('quill');
+                Quill = mod.default || mod;
+            } catch (e) {
+                console.error("Failed to import quill directly", e);
+                const mod = await import('react-quill-new');
+                Quill = (mod as any).Quill || (mod.default as any).Quill;
+            }
 
-            if (!Quill.imports['formats/image']) {
-                const Image = Quill.import('formats/image') as any;
+            if (!Quill) {
+                console.warn('Could not find Quill export');
+                return;
+            }
+
+            const Image = Quill.import('formats/image') as any;
+            if (Image && !Image.sanitize.__patched) {
                 const originalSanitize = Image.sanitize;
                 Image.sanitize = function (url: string) {
                     if (!url) return '';
                     const protocol = url.slice(0, url.indexOf(':'));
                     return (['http', 'https', 'data', 'blob'].indexOf(protocol) > -1)
-                        ? url : originalSanitize(url);
+                        ? url : originalSanitize.call(Image, url);
                 };
+                Image.sanitize.__patched = true;
                 Quill.register(Image, true);
             }
         };
@@ -89,13 +103,22 @@ export default function QuillEditor({
 
             if (quill) {
                 const range = quill.getSelection(true);
-                quill.insertEmbed(range.index, 'image', blobUrl, 'user');
+                const index = range ? range.index : quill.getLength();
+                quill.insertEmbed(index, 'image', blobUrl, 'user');
                 // Set the alt attribute on the just-inserted <img>
-                const [leaf] = quill.getLeaf(range.index);
-                if (leaf?.domNode?.tagName === 'IMG') {
-                    leaf.domNode.setAttribute('alt', altText);
-                }
-                quill.setSelection(range.index + 1, 0);
+                // Note: quill.getLeaf might throw or return unexpected result if index is incorrect
+                setTimeout(() => {
+                    try {
+                        const [leaf] = quill.getLeaf(index);
+                        if (leaf?.domNode?.tagName === 'IMG') {
+                            leaf.domNode.setAttribute('alt', altText);
+                        }
+                    } catch (e) {
+                         console.warn('Could not set alt text for image', e);
+                    }
+                }, 0);
+                
+                quill.setSelection(index + 1, 0);
             }
         };
     }, []); // stable — reads latest values through refs
