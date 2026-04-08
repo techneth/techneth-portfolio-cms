@@ -788,4 +788,8 @@ export async function deleteJobApplication(id: string): Promise<void> {
         resourceId: id,
         resourceTitle: `Deleted job application for ${application.full_name}`
     });
+
+    revalidatePath('/careers');
+    revalidateTag('job-applications', 'default');
+    revalidateTag('activity-logs', 'default');
 }
