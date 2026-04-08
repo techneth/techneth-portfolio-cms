@@ -9,6 +9,7 @@ import {
     getJobApplications,
     updateJobApplicationStatus,
     deleteJobApplication,
+    deleteBulkJobApplications,
     sendApplicationEmail,
     sendBulkApplicationEmail,
     Job,
@@ -63,6 +64,7 @@ export default function CareersClient({
     const [jobToDelete, setJobToDelete] = useState<{ id: string; title: string } | null>(null);
     const [isAppDeleteModalOpen, setIsAppDeleteModalOpen] = useState(false);
     const [appToDelete, setAppToDelete] = useState<{ id: string; name: string } | null>(null);
+    const [appToDeleteMode, setAppToDeleteMode] = useState<'single' | 'bulk'>('single');
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [emailModalMode, setEmailModalMode] = useState<'single' | 'bulk'>('single');
     const [activeApplicationForEmail, setActiveApplicationForEmail] = useState<JobApplication | null>(null);
@@ -165,32 +167,60 @@ export default function CareersClient({
     };
 
     const handleDeleteAppClick = (id: string, name: string) => {
+        setAppToDeleteMode('single');
         setAppToDelete({ id, name });
         setIsAppDeleteModalOpen(true);
     };
 
-    const confirmDeleteApp = async () => {
-        if (!appToDelete) return;
+    const handleBulkDeleteAppClick = () => {
+        if (!selectedApplicationIds.length) {
+            toast.error('Select at least one applicant to delete');
+            return;
+        }
+        setAppToDeleteMode('bulk');
+        setAppToDelete(null);
+        setIsAppDeleteModalOpen(true);
+    };
 
-        const toastId = toast.loading('Deleting job application...');
+    const confirmDeleteApp = async () => {
+        const toastId = toast.loading(appToDeleteMode === 'single' ? 'Deleting job application...' : `Deleting ${selectedApplicationIds.length} job applications...`);
         setIsAppDeleteModalOpen(false);
 
-        // Optimistic delete
-        setApplications(prev => prev.filter(app => app.id !== appToDelete.id));
-        // Remove from selected array if present
-        if (selectedApplicationIds.includes(appToDelete.id)) {
-            setSelectedApplicationIds(prev => prev.filter(id => id !== appToDelete.id));
-        }
+        if (appToDeleteMode === 'single') {
+            if (!appToDelete) return;
 
-        try {
-            await deleteJobApplication(appToDelete.id);
-            toast.success('Job application and files deleted permanently', { id: toastId });
-            loadApplications(false); 
-        } catch (error: any) {
-            loadApplications(false);
-            toast.error(error.message || 'Failed to delete application', { id: toastId });
-        } finally {
-            setAppToDelete(null);
+            // Optimistic delete
+            setApplications(prev => prev.filter(app => app.id !== appToDelete.id));
+            if (selectedApplicationIds.includes(appToDelete.id)) {
+                setSelectedApplicationIds(prev => prev.filter(id => id !== appToDelete.id));
+            }
+
+            try {
+                await deleteJobApplication(appToDelete.id);
+                toast.success('Job application and files deleted permanently', { id: toastId });
+                loadApplications(false); 
+            } catch (error: any) {
+                loadApplications(false);
+                toast.error(error.message || 'Failed to delete application', { id: toastId });
+            } finally {
+                setAppToDelete(null);
+            }
+        } else {
+            // Bulk Delete
+            const idsToDelete = [...selectedApplicationIds];
+            
+            // Optimistic bulk delete
+            setApplications(prev => prev.filter(app => !idsToDelete.includes(app.id)));
+            setSelectedApplicationIds([]); // Clear selection
+
+            try {
+                await deleteBulkJobApplications(idsToDelete);
+                toast.success(`${idsToDelete.length} job applications and files deleted permanently`, { id: toastId });
+                loadApplications(false); 
+            } catch (error: any) {
+                loadApplications(false);
+                toast.error(error.message || 'Failed to delete applications', { id: toastId });
+            }
         }
     };
 
@@ -593,15 +623,26 @@ export default function CareersClient({
                                 Review applicants, update status, and send individual or bulk emails using templates.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={openBulkEmailModal}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-                            disabled={selectedApplicationIds.length === 0}
-                        >
-                            <Mail size={16} />
-                            Send Bulk Email ({selectedApplicationIds.length})
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleBulkDeleteAppClick}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors disabled:opacity-50"
+                                disabled={selectedApplicationIds.length === 0}
+                            >
+                                <Trash2 size={16} />
+                                Delete Selected ({selectedApplicationIds.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={openBulkEmailModal}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
+                                disabled={selectedApplicationIds.length === 0}
+                            >
+                                <Mail size={16} />
+                                Send Bulk Email ({selectedApplicationIds.length})
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
@@ -1138,17 +1179,24 @@ export default function CareersClient({
             <Modal
                 isOpen={isAppDeleteModalOpen}
                 onClose={() => setIsAppDeleteModalOpen(false)}
-                title="Delete Application & Files?"
+                title={appToDeleteMode === 'single' ? "Delete Application & Files?" : "Bulk Delete Applications & Files?"}
             >
                 <div className="space-y-4">
                     <div className="flex items-center p-3 bg-red-50 rounded-md">
                         <AlertTriangle className="text-red-500 mr-3 flex-shrink-0" size={24} />
                         <p className="text-sm text-red-700">
-                            WARNING: This will permanently delete the application record and any uploaded files (resume and cover letter) from the storage bucket. This action cannot be undone.
+                            {appToDeleteMode === 'single' 
+                                ? "WARNING: This will permanently delete the application record and any uploaded files (resume and cover letter) from the storage bucket. This action cannot be undone."
+                                : "WARNING: This will permanently delete selected application records and their associated files from the storage bucket. This action cannot be undone."
+                            }
                         </p>
                     </div>
                     <p className="text-gray-600">
-                        Are you sure you want to delete <span className="font-semibold text-gray-800">"{appToDelete?.name}"</span>'s application?
+                        {appToDeleteMode === 'single' ? (
+                            <>Are you sure you want to delete <span className="font-semibold text-gray-800">"{appToDelete?.name}"</span>'s application?</>
+                        ) : (
+                            <>Are you sure you want to delete <span className="font-semibold text-gray-800">{selectedApplicationIds.length} selected</span> applications?</>
+                        )}
                     </p>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button
@@ -1162,7 +1210,7 @@ export default function CareersClient({
                             className="px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors flex items-center"
                         >
                             <Trash2 size={16} className="mr-2" />
-                            Delete Application & Files
+                            {appToDeleteMode === 'single' ? 'Delete Application & Files' : 'Bulk Delete Applications'}
                         </button>
                     </div>
                 </div>
