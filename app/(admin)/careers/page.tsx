@@ -49,6 +49,8 @@ export default function CareersPage() {
     const [maxExperience, setMaxExperience] = useState('');
     const [minSalary, setMinSalary] = useState('');
     const [maxSalary, setMaxSalary] = useState('');
+    const [requireLinkedin, setRequireLinkedin] = useState('');
+    const [requirePortfolio, setRequirePortfolio] = useState('');
     const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [jobToDelete, setJobToDelete] = useState<{ id: string; title: string } | null>(null);
@@ -287,6 +289,19 @@ export default function CareersPage() {
             }
             if (maxSalary !== '') {
                 if (isNaN(salNum) || salNum > Number(maxSalary)) return false;
+            }
+
+            // Reference links filters
+            if (requireLinkedin !== '') {
+                const hasLinkedin = !!app.linkedin && app.linkedin.trim() !== '';
+                if (requireLinkedin === 'yes' && !hasLinkedin) return false;
+                if (requireLinkedin === 'no' && hasLinkedin) return false;
+            }
+
+            if (requirePortfolio !== '') {
+                const hasPortfolio = !!app.portfolio && app.portfolio.trim() !== '';
+                if (requirePortfolio === 'yes' && !hasPortfolio) return false;
+                if (requirePortfolio === 'no' && hasPortfolio) return false;
             }
 
             return true;
@@ -642,6 +657,32 @@ export default function CareersPage() {
                                 placeholder="e.g. 100000"
                                 className="input-field w-full"
                             />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Has LinkedIn</label>
+                            <select
+                                value={requireLinkedin}
+                                onChange={(e) => setRequireLinkedin(e.target.value)}
+                                className="input-field w-full text-sm"
+                            >
+                                <option value="">Any</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Has Portfolio</label>
+                            <select
+                                value={requirePortfolio}
+                                onChange={(e) => setRequirePortfolio(e.target.value)}
+                                className="input-field w-full text-sm"
+                            >
+                                <option value="">Any</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
                         </div>
                     </div>
                 </div>
