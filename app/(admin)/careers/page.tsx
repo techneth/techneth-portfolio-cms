@@ -8,6 +8,7 @@ import {
     deleteJob,
     getJobApplications,
     updateJobApplicationStatus,
+    deleteJobApplication,
     sendApplicationEmail,
     sendBulkApplicationEmail,
     Job,
@@ -54,6 +55,8 @@ export default function CareersPage() {
     const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [jobToDelete, setJobToDelete] = useState<{ id: string; title: string } | null>(null);
+    const [isAppDeleteModalOpen, setIsAppDeleteModalOpen] = useState(false);
+    const [appToDelete, setAppToDelete] = useState<{ id: string; name: string } | null>(null);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [emailModalMode, setEmailModalMode] = useState<'single' | 'bulk'>('single');
     const [activeApplicationForEmail, setActiveApplicationForEmail] = useState<JobApplication | null>(null);
@@ -152,6 +155,36 @@ export default function CareersPage() {
             toast.error(error.message || 'Failed to delete job', { id: toastId });
         } finally {
             setJobToDelete(null);
+        }
+    };
+
+    const handleDeleteAppClick = (id: string, name: string) => {
+        setAppToDelete({ id, name });
+        setIsAppDeleteModalOpen(true);
+    };
+
+    const confirmDeleteApp = async () => {
+        if (!appToDelete) return;
+
+        const toastId = toast.loading('Deleting job application...');
+        setIsAppDeleteModalOpen(false);
+
+        // Optimistic delete
+        setApplications(prev => prev.filter(app => app.id !== appToDelete.id));
+        // Remove from selected array if present
+        if (selectedApplicationIds.includes(appToDelete.id)) {
+            setSelectedApplicationIds(prev => prev.filter(id => id !== appToDelete.id));
+        }
+
+        try {
+            await deleteJobApplication(appToDelete.id);
+            toast.success('Job application and files deleted permanently', { id: toastId });
+            loadApplications(false); 
+        } catch (error: any) {
+            loadApplications(false);
+            toast.error(error.message || 'Failed to delete application', { id: toastId });
+        } finally {
+            setAppToDelete(null);
         }
     };
 
@@ -822,10 +855,19 @@ export default function CareersPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => openSingleEmailModal(application)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors text-xs font-medium"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors text-xs font-medium mr-2"
                                             >
                                                 <Mail size={12} />
                                                 Email
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteAppClick(application.id, application.full_name)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-[#DC3545] rounded hover:bg-red-100 transition-colors text-xs font-medium"
+                                                title="Delete Application and Files"
+                                            >
+                                                <Trash2 size={12} />
+                                                Delete
                                             </button>
                                         </td>
                                     </tr>
@@ -1084,6 +1126,40 @@ export default function CareersPage() {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* Application Deletion Confirmation Modal */}
+            <Modal
+                isOpen={isAppDeleteModalOpen}
+                onClose={() => setIsAppDeleteModalOpen(false)}
+                title="Delete Application & Files?"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center p-3 bg-red-50 rounded-md">
+                        <AlertTriangle className="text-red-500 mr-3 flex-shrink-0" size={24} />
+                        <p className="text-sm text-red-700">
+                            WARNING: This will permanently delete the application record and any uploaded files (resume and cover letter) from the storage bucket. This action cannot be undone.
+                        </p>
+                    </div>
+                    <p className="text-gray-600">
+                        Are you sure you want to delete <span className="font-semibold text-gray-800">"{appToDelete?.name}"</span>'s application?
+                    </p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setIsAppDeleteModalOpen(false)}
+                            className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded transition-colors border border-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDeleteApp}
+                            className="px-4 py-2 bg-[#DC3545] text-white rounded hover:bg-[#DC3545]/90 transition-colors flex items-center"
+                        >
+                            <Trash2 size={16} className="mr-2" />
+                            Delete Application & Files
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

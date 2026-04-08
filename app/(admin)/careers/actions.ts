@@ -730,3 +730,62 @@ export async function sendBulkApplicationEmail(
 
     return { sent, failed };
 }
+
+export async function deleteJobApplication(id: string): Promise<void> {
+    const user = await getCurrentUser();
+    if (!user || !canPerformAction(user, 'delete', 'careers')) {
+        throw new Error('Unauthorized - Only admins can delete job applications');
+    }
+
+    const supabase = (await createServerClient()) as SupabaseClient<any>;
+
+    // Fetch the application to find its attached files
+    const { data: application, error: appError } = await supabase
+        .from('job_applications')
+        .select('resume_file_path, cover_letter_file_path, full_name')
+        .eq('id', id)
+        .single();
+
+    if (appError) {
+        throw new Error(`Failed to fetch application: ${appError.message}`);
+    }
+
+    if (!application) {
+        throw new Error('Application not found');
+    }
+
+    // Delete files from storage
+    const filesToDelete: string[] = [];
+    if (application.resume_file_path) filesToDelete.push(application.resume_file_path);
+    if (application.cover_letter_file_path) filesToDelete.push(application.cover_letter_file_path);
+
+    if (filesToDelete.length > 0) {
+        const { error: storageError } = await supabase.storage
+            .from('job-applications')
+            .remove(filesToDelete);
+
+        if (storageError) {
+            console.error('Failed to delete application files from bucket:', storageError);
+        }
+    }
+
+    // Delete the application from database
+    const { error: deleteError } = await supabase
+        .from('job_applications')
+        .delete()
+        .eq('id', id);
+
+    if (deleteError) {
+        throw new Error(`Failed to delete application: ${deleteError.message}`);
+    }
+
+    await logActivity({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        actionType: 'delete',
+        resourceType: 'job_application',
+        resourceId: id,
+        resourceTitle: `Deleted job application for ${application.full_name}`
+    });
+}
