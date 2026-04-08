@@ -64,15 +64,17 @@ export default function CareersPage() {
     const applicationsSectionRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        loadJobs();
+        // If jobs is already populated, optionally fetch in background
+        loadJobs(jobs.length === 0);
     }, [departmentFilter, locationFilter, typeFilter, statusFilter]);
 
     useEffect(() => {
-        loadApplications();
+        // If applications is already populated, optionally fetch in background
+        loadApplications(applications.length === 0);
     }, [applicationStatusFilter, applicationJobFilter]);
 
-    const loadJobs = async () => {
-        setLoading(true);
+    const loadJobs = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const filters: any = {};
             if (departmentFilter) filters.department = departmentFilter;
@@ -86,12 +88,12 @@ export default function CareersPage() {
             console.error('Error loading jobs:', error);
             toast.error(error.message || 'Failed to load jobs');
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
-    const loadApplications = async () => {
-        setApplicationsLoading(true);
+    const loadApplications = async (showLoading = true) => {
+        if (showLoading) setApplicationsLoading(true);
         try {
             const filters: { status?: JobApplicationStatus; jobId?: string } = {};
             if (applicationStatusFilter) {
@@ -107,17 +109,21 @@ export default function CareersPage() {
             console.error('Error loading applications:', error);
             toast.error(error.message || 'Failed to load job applications');
         } finally {
-            setApplicationsLoading(false);
+            if (showLoading) setApplicationsLoading(false);
         }
     };
 
     const handleToggleStatus = async (id: string) => {
         const toastId = toast.loading('Updating job status...');
+        // Optimistic update
+        setJobs(prevJobs => prevJobs.map(job => job.id === id ? { ...job, is_active: !job.is_active } : job));
         try {
             await toggleJobStatus(id);
             toast.success('Job status updated', { id: toastId });
-            loadJobs();
+            loadJobs(false);
         } catch (error: any) {
+            // Revert on failure
+            loadJobs(false);
             toast.error(error.message || 'Failed to update status', { id: toastId });
         }
     };
@@ -132,12 +138,17 @@ export default function CareersPage() {
 
         const toastId = toast.loading('Deleting job and applications...');
         setIsDeleteModalOpen(false);
+        
+        // Optimistic delete
+        setJobs(prevJobs => prevJobs.filter(job => job.id !== jobToDelete.id));
+
         try {
             await deleteJob(jobToDelete.id);
             toast.success('Job and applications deleted permanently', { id: toastId });
-            loadJobs();
-            loadApplications(); // Reload applications to reflect deletions
+            loadJobs(false);
+            loadApplications(false); // Reload applications to reflect deletions
         } catch (error: any) {
+            loadJobs(false);
             toast.error(error.message || 'Failed to delete job', { id: toastId });
         } finally {
             setJobToDelete(null);
@@ -156,11 +167,17 @@ export default function CareersPage() {
 
     const handleApplicationStatusChange = async (applicationId: string, nextStatus: JobApplicationStatus) => {
         const toastId = toast.loading('Updating applicant status...');
+        
+        // Optimistic update
+        setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: nextStatus } : app));
+
         try {
             await updateJobApplicationStatus(applicationId, nextStatus);
             toast.success('Applicant status updated', { id: toastId });
-            loadApplications();
+            loadApplications(false);
         } catch (error: any) {
+            // Revert on failure
+            loadApplications(false);
             toast.error(error.message || 'Failed to update applicant status', { id: toastId });
         }
     };
@@ -247,7 +264,7 @@ export default function CareersPage() {
             }
 
             setIsEmailModalOpen(false);
-            loadApplications();
+            loadApplications(false);
         } catch (error: any) {
             toast.error(error.message || 'Failed to send email', { id: toastId });
         }
