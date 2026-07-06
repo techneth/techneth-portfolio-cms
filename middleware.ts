@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { buildCorsHeaders, isOriginAllowed } from '@/lib/cors';
 
 export async function middleware(request: NextRequest) {
     // Check if Supabase is configured
@@ -7,6 +8,31 @@ export async function middleware(request: NextRequest) {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     const path = request.nextUrl.pathname;
+
+    // ---- API routes: enforce Origin allow-list + CORS ----
+    if (path.startsWith('/api')) {
+        const corsHeaders = buildCorsHeaders(request);
+
+        // Block cross-origin requests from sites that are not allow-listed.
+        if (!isOriginAllowed(request)) {
+            return NextResponse.json(
+                { error: 'Origin not allowed' },
+                { status: 403, headers: corsHeaders }
+            );
+        }
+
+        // Answer CORS preflight without touching the route handler.
+        if (request.method === 'OPTIONS') {
+            return new NextResponse(null, { status: 204, headers: corsHeaders });
+        }
+
+        // Allowed request: continue to the route, attaching CORS headers.
+        const apiResponse = NextResponse.next({
+            request: { headers: request.headers },
+        });
+        corsHeaders.forEach((value, key) => apiResponse.headers.set(key, value));
+        return apiResponse;
+    }
 
 
     // If Supabase not configured, redirect all routes to setup page except setup itself
@@ -112,5 +138,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
