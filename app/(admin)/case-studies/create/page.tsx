@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Star, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Star, Globe, Monitor } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -14,6 +14,8 @@ import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
+import ContentPreview from '@/components/admin/ContentPreview';
+import CaseStudyNarrativeFields, { narrativeDefaults } from '@/components/admin/case-study/NarrativeFields';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
@@ -39,6 +41,7 @@ export default function CreateCaseStudyPage() {
         seo_description: '',
         is_english: true,  // default to English
         pair_id: null,
+        ...narrativeDefaults(),
     });
     const [selectedEnCategory, setSelectedEnCategory] = useState('');
     const [techInput, setTechInput] = useState('');
@@ -46,6 +49,13 @@ export default function CreateCaseStudyPage() {
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // Featured image for the preview: uploaded URL, or the locally picked file
+    const previewImage = useMemo(
+        () => formData.featured_image || (imageFile ? URL.createObjectURL(imageFile) : ''),
+        [formData.featured_image, imageFile]
+    );
 
     // Pre-fill from query params when creating a counterpart version
     useEffect(() => {
@@ -228,6 +238,14 @@ export default function CreateCaseStudyPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                    >
+                        <Monitor size={18} />
+                        <span>Preview</span>
+                    </button>
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={loading}
@@ -503,6 +521,13 @@ export default function CreateCaseStudyPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Case study narrative */}
+                <CaseStudyNarrativeFields
+                    data={formData}
+                    onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                    slug={formData.slug}
+                />
             </form>
 
             <ValidationModal
@@ -510,6 +535,19 @@ export default function CreateCaseStudyPage() {
                 onClose={() => setShowValidationModal(false)}
                 onConfirm={handleConfirmSubmit}
                 warnings={contentWarnings}
+            />
+
+            <ContentPreview
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                type="case-study"
+                title={formData.title}
+                content={formData.content}
+                category={selectedEnCategory}
+                excerpt={formData.excerpt}
+                featuredImage={previewImage}
+                clientName={formData.client_name}
+                industry={formData.industry}
             />
         </div>
     );

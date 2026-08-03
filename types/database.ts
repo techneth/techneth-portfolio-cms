@@ -140,6 +140,44 @@ export interface Database {
                     published_at: string | null
                     is_english: boolean | null
                     pair_id: string | null
+                    // Narrative fields (see add_case_study_narrative_fields.sql)
+                    subtitle: string | null
+                    hero_image: string | null
+                    client_logo: string | null
+                    client_location: string | null
+                    timeline: string | null
+                    project_year: string | null
+                    platforms: Json | null
+                    services: Json | null
+                    industries: Json | null
+                    live_url: string | null
+                    mission: string | null
+                    mission_image: string | null
+                    vision: string | null
+                    vision_image: string | null
+                    goals: Json | null
+                    challenge: string | null
+                    challenge_points: Json | null
+                    challenge_image: string | null
+                    solution: string | null
+                    solution_points: Json | null
+                    solution_image: string | null
+                    outcome: string | null
+                    outcome_image: string | null
+                    metrics: Json | null
+                    phases: Json | null
+                    features: Json | null
+                    gallery_images: Json | null
+                    technologies_note: string | null
+                    technologies_image: string | null
+                    typography: Json | null
+                    color_palette: Json | null
+                    identity_note: string | null
+                    identity_image: string | null
+                    testimonial_quote: string | null
+                    testimonial_author: string | null
+                    testimonial_role: string | null
+                    testimonial_avatar: string | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
@@ -169,6 +207,43 @@ export interface Database {
                     published_at?: string | null
                     is_english?: boolean | null
                     pair_id?: string | null
+                    subtitle?: string | null
+                    hero_image?: string | null
+                    client_logo?: string | null
+                    client_location?: string | null
+                    timeline?: string | null
+                    project_year?: string | null
+                    platforms?: Json | null
+                    services?: Json | null
+                    industries?: Json | null
+                    live_url?: string | null
+                    mission?: string | null
+                    mission_image?: string | null
+                    vision?: string | null
+                    vision_image?: string | null
+                    goals?: Json | null
+                    challenge?: string | null
+                    challenge_points?: Json | null
+                    challenge_image?: string | null
+                    solution?: string | null
+                    solution_points?: Json | null
+                    solution_image?: string | null
+                    outcome?: string | null
+                    outcome_image?: string | null
+                    metrics?: Json | null
+                    phases?: Json | null
+                    features?: Json | null
+                    gallery_images?: Json | null
+                    technologies_note?: string | null
+                    technologies_image?: string | null
+                    typography?: Json | null
+                    color_palette?: Json | null
+                    identity_note?: string | null
+                    identity_image?: string | null
+                    testimonial_quote?: string | null
+                    testimonial_author?: string | null
+                    testimonial_role?: string | null
+                    testimonial_avatar?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -197,6 +272,43 @@ export interface Database {
                     published_at?: string | null
                     is_english?: boolean | null
                     pair_id?: string | null
+                    subtitle?: string | null
+                    hero_image?: string | null
+                    client_logo?: string | null
+                    client_location?: string | null
+                    timeline?: string | null
+                    project_year?: string | null
+                    platforms?: Json | null
+                    services?: Json | null
+                    industries?: Json | null
+                    live_url?: string | null
+                    mission?: string | null
+                    mission_image?: string | null
+                    vision?: string | null
+                    vision_image?: string | null
+                    goals?: Json | null
+                    challenge?: string | null
+                    challenge_points?: Json | null
+                    challenge_image?: string | null
+                    solution?: string | null
+                    solution_points?: Json | null
+                    solution_image?: string | null
+                    outcome?: string | null
+                    outcome_image?: string | null
+                    metrics?: Json | null
+                    phases?: Json | null
+                    features?: Json | null
+                    gallery_images?: Json | null
+                    technologies_note?: string | null
+                    technologies_image?: string | null
+                    typography?: Json | null
+                    color_palette?: Json | null
+                    identity_note?: string | null
+                    identity_image?: string | null
+                    testimonial_quote?: string | null
+                    testimonial_author?: string | null
+                    testimonial_role?: string | null
+                    testimonial_avatar?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null

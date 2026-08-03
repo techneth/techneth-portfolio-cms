@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Trash2, Star, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Trash2, Star, Globe, Monitor } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -16,6 +16,8 @@ import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
 import Modal from '@/components/admin/Modal';
 import { AlertTriangle } from 'lucide-react';
+import ContentPreview from '@/components/admin/ContentPreview';
+import CaseStudyNarrativeFields, { narrativeDefaults, hydrateNarrative } from '@/components/admin/case-study/NarrativeFields';
 
 export default function EditCaseStudyClient({ id, initialData }: { id: string, initialData: any }) {
     const params = useParams();
@@ -44,12 +46,20 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
         seo_title: '',
         seo_description: '',
         is_english: false,
+        ...narrativeDefaults(),
     });
     const [techInput, setTechInput] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [contentWarnings, setContentWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // Featured image for the preview: saved URL, or the locally picked file
+    const previewImage = useMemo(
+        () => (imageFile ? URL.createObjectURL(imageFile) : formData.featured_image),
+        [formData.featured_image, imageFile]
+    );
 
     useEffect(() => {
         if (initialData) {
@@ -70,6 +80,7 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                 seo_title: initialData.seo_title || '',
                 seo_description: initialData.seo_description || '',
                 is_english: initialData.is_english ?? false,
+                ...hydrateNarrative(initialData),
             });
             setSelectedEnCategory(getEnCategory(initialData.category || ''));
             setLoading(false);
@@ -260,6 +271,14 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                     >
                         <Trash2 size={18} />
                         <span className="hidden sm:inline">Delete</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                    >
+                        <Monitor size={18} />
+                        <span>Preview</span>
                     </button>
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
@@ -536,6 +555,13 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                         </div>
                     </div>
                 </div>
+
+                {/* Case study narrative */}
+                <CaseStudyNarrativeFields
+                    data={formData}
+                    onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                    slug={formData.slug}
+                />
             </form>
 
             <ValidationModal
@@ -543,6 +569,19 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                 onClose={() => setShowValidationModal(false)}
                 onConfirm={handleConfirmSubmit}
                 warnings={contentWarnings}
+            />
+
+            <ContentPreview
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                type="case-study"
+                title={formData.title}
+                content={formData.content}
+                category={selectedEnCategory}
+                excerpt={formData.excerpt}
+                featuredImage={previewImage}
+                clientName={formData.client_name}
+                industry={formData.industry}
             />
 
             {/* Delete Confirmation Modal */}

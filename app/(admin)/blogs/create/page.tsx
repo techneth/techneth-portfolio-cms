@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Star, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Star, Globe, Monitor } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -14,6 +14,7 @@ import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
+import ContentPreview from '@/components/admin/ContentPreview';
 
 export default function CreateBlogPage() {
     const router = useRouter();
@@ -44,6 +45,13 @@ export default function CreateBlogPage() {
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
     const [pendingEvent, setPendingEvent] = useState<React.FormEvent | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // Featured image for the preview: uploaded URL, or the locally picked file
+    const previewImage = useMemo(
+        () => formData.featured_image || (imageFile ? URL.createObjectURL(imageFile) : ''),
+        [formData.featured_image, imageFile]
+    );
 
     // Pre-fill from query params when creating a counterpart version
     useEffect(() => {
@@ -223,6 +231,14 @@ export default function CreateBlogPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                    >
+                        <Monitor size={18} />
+                        <span>Preview</span>
+                    </button>
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
                         disabled={loading}
@@ -453,6 +469,18 @@ export default function CreateBlogPage() {
                 onClose={() => setShowValidationModal(false)}
                 onConfirm={handleConfirmSubmit}
                 warnings={modalWarnings}
+            />
+
+            <ContentPreview
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                type="blog"
+                title={formData.title}
+                content={formData.content}
+                category={selectedEnCategory}
+                authorName={formData.author_name}
+                excerpt={formData.excerpt}
+                featuredImage={previewImage}
             />
         </div>
     );

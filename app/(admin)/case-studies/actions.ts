@@ -3,7 +3,45 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
+import { sanitizeHtmlServer } from '@/lib/sanitize/server';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+
+/** A single headline metric on the teal "results at a glance" band. */
+export interface CaseStudyMetric {
+    value: string;
+    label: string;
+    detail?: string;
+}
+
+/** One phase in the "process, phase by phase" section. */
+export interface CaseStudyPhase {
+    title: string;
+    description?: string;
+    points?: string[];
+    image?: string;
+}
+
+/** A product highlight rendered as an alternating image/text row. */
+export interface CaseStudyFeature {
+    title: string;
+    description?: string;
+    image?: string;
+    image_alt?: string;
+}
+
+/** A gallery slide. `span` controls the slide width in the carousel. */
+export interface CaseStudyGalleryImage {
+    url: string;
+    caption?: string;
+    alt?: string;
+    span?: 'full' | 'half' | 'third';
+}
+
+/** A colour swatch in the visual-identity palette. */
+export interface CaseStudyColorSwatch {
+    hex: string;
+    name?: string;
+}
 
 export interface CaseStudyFormData {
     title: string;
@@ -23,6 +61,51 @@ export interface CaseStudyFormData {
     seo_description: string;
     is_english: boolean;
     pair_id?: string | null;
+
+    // ── Narrative fields (all optional; each block is skipped when empty) ──
+    // 2.1 Project facts
+    subtitle?: string;
+    hero_image?: string;
+    client_logo?: string;
+    client_location?: string;
+    timeline?: string;
+    project_year?: string;
+    platforms?: string[];
+    services?: string[];
+    industries?: string[];
+    live_url?: string;
+    // 2.2 Statement blocks
+    mission?: string;
+    mission_image?: string;
+    vision?: string;
+    vision_image?: string;
+    goals?: string[];
+    // 2.3 Narrative
+    challenge?: string;
+    challenge_points?: string[];
+    challenge_image?: string;
+    solution?: string;
+    solution_points?: string[];
+    solution_image?: string;
+    outcome?: string;
+    outcome_image?: string;
+    // 2.4 / 2.5 / 2.7 / 2.8 structured lists
+    metrics?: CaseStudyMetric[];
+    phases?: CaseStudyPhase[];
+    features?: CaseStudyFeature[];
+    gallery_images?: CaseStudyGalleryImage[];
+    // 2.6 Technology and visual identity
+    technologies_note?: string;
+    technologies_image?: string;
+    typography?: string[];
+    color_palette?: CaseStudyColorSwatch[];
+    identity_note?: string;
+    identity_image?: string;
+    // 2.9 Client quote
+    testimonial_quote?: string;
+    testimonial_author?: string;
+    testimonial_role?: string;
+    testimonial_avatar?: string;
 }
 
 export async function createCaseStudy(formData: CaseStudyFormData) {
@@ -37,6 +120,7 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
         .from('case_studies')
         .insert({
             ...formData,
+            content: await sanitizeHtmlServer(formData.content),
             author_id: user.id,
             author_name: user.name,
             created_by: user.id,
@@ -78,7 +162,7 @@ export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: Cas
 
     const { data: enData, error: enError } = await supabase
         .from('case_studies')
-        .insert({ ...enForm, is_english: true, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
+        .insert({ ...enForm, content: await sanitizeHtmlServer(enForm.content), is_english: true, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
     if (enError) {
         if (enError.code === '23505') throw new Error(`A case study with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
@@ -87,7 +171,7 @@ export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: Cas
 
     const { data: nlData, error: nlError } = await supabase
         .from('case_studies')
-        .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
+        .insert({ ...nlForm, content: await sanitizeHtmlServer(nlForm.content), is_english: false, author_id: user.id, author_name: user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
     if (nlError) {
         // Roll back the EN post to avoid orphaned records
@@ -165,6 +249,7 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
         .from('case_studies')
         .update({
             ...formData,
+            content: await sanitizeHtmlServer(formData.content),
             updated_by: user.id,
             published_at: formData.status === 'published' && !existing.published_at
                 ? new Date().toISOString()

@@ -102,6 +102,9 @@ export function canPerformAction(
         if (resource === 'logs' && action === 'read') {
             return true; // Admins can view logs
         }
+        if (resource === 'newsletter') {
+            return true; // Admins can manage the newsletter (subscribers + campaigns)
+        }
         // Admins can manage all content
         if (['blogs', 'blog', 'case_studies', 'case_study', 'contacts', 'contact'].includes(resource)) {
             return true;
@@ -112,7 +115,7 @@ export function canPerformAction(
     // Editor permissions
     if (user.role === 'editor') {
         // Editors can't access these
-        if (['users', 'settings', 'logs', 'careers'].includes(resource)) {
+        if (['users', 'settings', 'logs', 'careers', 'newsletter'].includes(resource)) {
             return false;
         }
 
