@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
+import { sanitizeHtmlServer } from '@/lib/sanitize/server';
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
 
 export interface BlogFormData {
@@ -34,6 +35,7 @@ export async function createBlog(formData: BlogFormData) {
         .from('blogs')
         .insert({
             ...formData,
+            content: await sanitizeHtmlServer(formData.content),
             author_id: user.id,
             author_name: formData.author_name || user.name,
             created_by: user.id,
@@ -77,7 +79,7 @@ export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData)
     // Insert English post first
     const { data: enData, error: enError } = await supabase
         .from('blogs')
-        .insert({ ...enForm, is_english: true, author_id: user.id, author_name: enForm.author_name || user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
+        .insert({ ...enForm, content: await sanitizeHtmlServer(enForm.content), is_english: true, author_id: user.id, author_name: enForm.author_name || user.name, created_by: user.id, updated_by: user.id, published_at: enForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
     if (enError) {
         if (enError.code === '23505') throw new Error(`A blog with slug "${enForm.slug}" already exists. Please use a different slug for the English version.`);
@@ -87,7 +89,7 @@ export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData)
     // Insert Dutch post, pair_id → English post id
     const { data: nlData, error: nlError } = await supabase
         .from('blogs')
-        .insert({ ...nlForm, is_english: false, author_id: user.id, author_name: nlForm.author_name || user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
+        .insert({ ...nlForm, content: await sanitizeHtmlServer(nlForm.content), is_english: false, author_id: user.id, author_name: nlForm.author_name || user.name, created_by: user.id, updated_by: user.id, pair_id: enData.id, published_at: nlForm.status === 'published' ? new Date().toISOString() : null })
         .select().single();
     if (nlError) {
         // Roll back the EN post to avoid orphaned records
@@ -168,6 +170,7 @@ export async function updateBlog(id: string, formData: BlogFormData) {
         .from('blogs')
         .update({
             ...formData,
+            content: await sanitizeHtmlServer(formData.content),
             updated_by: user.id,
             published_at: formData.status === 'published' && !existingBlog.published_at
                 ? new Date().toISOString()

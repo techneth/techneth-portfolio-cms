@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Globe, X, Plus, Star, Link2, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Globe, X, Plus, Star, Link2, Upload, Monitor } from 'lucide-react';
+import ContentPreview from '@/components/admin/ContentPreview';
 import { createCaseStudyPair, CaseStudyFormData } from '../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
 import CategorySelect from '@/components/admin/CategorySelect';
@@ -75,14 +76,21 @@ function TagField({ label, tags, onChange, placeholder }: { label: string; tags:
 }
 
 // ─── Form Panel ───────────────────────────────────────────────────────────────
-function FormPanel({ lang, form, onChange, showImageField }: { lang: 'en' | 'nl'; form: CaseStudyFormData; onChange: (f: CaseStudyFormData) => void; showImageField: boolean }) {
+function FormPanel({ lang, form, onChange, showImageField, onPreview }: { lang: 'en' | 'nl'; form: CaseStudyFormData; onChange: (f: CaseStudyFormData) => void; showImageField: boolean; onPreview?: () => void }) {
     const isEn = lang === 'en';
     const set = (field: keyof CaseStudyFormData, value: any) => onChange({ ...form, [field]: value });
 
     return (
         <div className={`flex-1 min-w-0 border-2 rounded-xl p-5 space-y-4 ${isEn ? 'border-blue-100 bg-blue-50/20' : 'border-orange-100 bg-orange-50/20'}`}>
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold ${isEn ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                <Globe size={14} /> {isEn ? 'English (EN)' : 'Dutch (NL)'}
+            <div className="flex items-center justify-between">
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold ${isEn ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                    <Globe size={14} /> {isEn ? 'English (EN)' : 'Dutch (NL)'}
+                </div>
+                {onPreview && (
+                    <button type="button" onClick={onPreview} className="flex items-center gap-1.5 px-3 py-1 text-sm text-gray-600 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors">
+                        <Monitor size={14} /> Preview
+                    </button>
+                )}
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
@@ -132,6 +140,9 @@ export default function CreateCaseStudyPairPage() {
     const [sharedTech, setSharedTech] = useState<string[]>([]);
     const [useSharedImage, setUseSharedImage] = useState(true);
     const [sharedImage, setSharedImage] = useState('');
+    const [previewLang, setPreviewLang] = useState<'en' | 'nl' | null>(null);
+
+    const previewForm = previewLang === 'nl' ? nlForm : enForm;
 
     const handleSubmit = async () => {
         if (!enForm.title || !enForm.slug || !nlForm.title || !nlForm.slug) { toast.error('Both versions must have a title and slug.'); return; }
@@ -219,9 +230,22 @@ export default function CreateCaseStudyPairPage() {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-5">
-                <FormPanel lang="en" form={enForm} onChange={setEnForm} showImageField={!useSharedImage} />
-                <FormPanel lang="nl" form={nlForm} onChange={setNlForm} showImageField={!useSharedImage} />
+                <FormPanel lang="en" form={enForm} onChange={setEnForm} showImageField={!useSharedImage} onPreview={() => setPreviewLang('en')} />
+                <FormPanel lang="nl" form={nlForm} onChange={setNlForm} showImageField={!useSharedImage} onPreview={() => setPreviewLang('nl')} />
             </div>
+
+            <ContentPreview
+                isOpen={previewLang !== null}
+                onClose={() => setPreviewLang(null)}
+                type="case-study"
+                title={previewForm.title}
+                content={previewForm.content}
+                category={previewLang === 'nl' ? getNlCategory(sharedCategory) : sharedCategory}
+                excerpt={previewForm.excerpt}
+                featuredImage={useSharedImage ? sharedImage : previewForm.featured_image}
+                clientName={sharedClient}
+                industry={sharedIndustry}
+            />
 
             <div className="flex justify-end">
                 <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-[#00A99D] text-white rounded-lg hover:bg-[#008F84] disabled:opacity-60 font-semibold shadow">

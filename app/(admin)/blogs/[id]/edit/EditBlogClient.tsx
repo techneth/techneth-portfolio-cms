@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Trash2, Star, Globe } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Trash2, Star, Globe, Monitor } from 'lucide-react';
 import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -16,6 +16,7 @@ import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
 import Modal from '@/components/admin/Modal';
 import { AlertTriangle } from 'lucide-react';
+import ContentPreview from '@/components/admin/ContentPreview';
 
 export default function EditBlogClient({ id, initialData }: { id: string, initialData: any }) {
     
@@ -46,6 +47,13 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
     const [modalWarnings, setModalWarnings] = useState<string[]>([]);
     const [showValidationModal, setShowValidationModal] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<'draft' | 'published' | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    // Featured image for the preview: saved URL, or the locally picked file
+    const previewImage = useMemo(
+        () => (imageFile ? URL.createObjectURL(imageFile) : formData.featured_image),
+        [formData.featured_image, imageFile]
+    );
 
     useEffect(() => {
         if (initialData) {
@@ -250,6 +258,14 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
                     >
                         <Trash2 size={18} />
                         <span className="hidden sm:inline">Delete</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center space-x-2 px-3 py-2 sm:px-4 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                    >
+                        <Monitor size={18} />
+                        <span>Preview</span>
                     </button>
                     <button
                         onClick={(e) => handleSubmit(e, 'draft')}
@@ -481,6 +497,18 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
                 onClose={() => setShowValidationModal(false)}
                 onConfirm={handleConfirmSubmit}
                 warnings={modalWarnings}
+            />
+
+            <ContentPreview
+                isOpen={showPreview}
+                onClose={() => setShowPreview(false)}
+                type="blog"
+                title={formData.title}
+                content={formData.content}
+                category={selectedEnCategory}
+                authorName={formData.author_name}
+                excerpt={formData.excerpt}
+                featuredImage={previewImage}
             />
 
             {/* Delete Confirmation Modal */}

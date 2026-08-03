@@ -13,7 +13,8 @@ import {
     LogOut,
     Menu,
     X,
-    Users
+    Users,
+    Send
 } from 'lucide-react';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -65,6 +66,12 @@ export default function Sidebar({ user }: SidebarProps) {
             label: 'Contact Submissions',
             icon: <Mail size={20} />,
             roles: ['super_admin', 'admin', 'editor'],
+        },
+        {
+            href: '/newsletter',
+            label: 'Newsletter',
+            icon: <Send size={20} />,
+            roles: ['super_admin', 'admin'],
         },
         {
             href: '/careers',

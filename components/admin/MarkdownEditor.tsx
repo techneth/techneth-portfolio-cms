@@ -1,7 +1,8 @@
 import dynamic from 'next/dynamic';
 
-// Dynamic import for QuillEditor to avoid SSR issues with Quill/Document
-const QuillEditor = dynamic(() => import('./QuillEditor'), {
+// Block-based live editor (drag & drop). Client-only: it uses DOMParser and
+// the native HTML5 Drag and Drop API.
+const BlogLiveEditor = dynamic(() => import('./live-editor/BlogLiveEditor'), {
     ssr: false,
     loading: () => <div className="h-96 w-full bg-gray-100 rounded animate-pulse" />,
 });
@@ -18,5 +19,5 @@ interface MarkdownEditorProps {
 }
 
 export default function MarkdownEditor(props: MarkdownEditorProps) {
-    return <QuillEditor {...props} />;
+    return <BlogLiveEditor {...props} />;
 }
