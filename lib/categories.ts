@@ -137,6 +137,21 @@ export const CATEGORIES: Category[] = [
 ];
 
 /**
+ * Case studies use a fixed, single-select shortlist of top-level service categories
+ * (not the full blog taxonomy above). Only one of these may be selected per case study.
+ */
+export const CASE_STUDY_CATEGORIES: Category[] = [
+    { en: 'Web Development', nl: 'Web Development' },
+    { en: 'Mobile Development', nl: 'Mobile Development' },
+    { en: 'Design', nl: 'Design' },
+    { en: 'Data and Analytics', nl: 'Data and Analytics' },
+    { en: 'Backend and Infrastructure', nl: 'Backend and Infrastructure' },
+    { en: 'CRM and Business Systems', nl: 'CRM and Business Systems' },
+    { en: 'Cloud and DevOps', nl: 'Cloud and DevOps' },
+    { en: 'Automation and AI', nl: 'Automation and AI' },
+];
+
+/**
  * Given a comma-separated string of English category labels, returns the corresponding Dutch labels joined by commas.
  * Falls back to the input value if no match is found.
  */
