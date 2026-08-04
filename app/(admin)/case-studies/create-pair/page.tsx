@@ -8,7 +8,7 @@ import ContentPreview from '@/components/admin/ContentPreview';
 import { createCaseStudyPair, CaseStudyFormData } from '../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
 import CategorySelect from '@/components/admin/CategorySelect';
-import { getNlCategory } from '@/lib/categories';
+import { getNlCategory, CASE_STUDY_CATEGORIES } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
@@ -191,7 +191,7 @@ export default function CreateCaseStudyPairPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} />
+                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} options={CASE_STUDY_CATEGORIES} single />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>

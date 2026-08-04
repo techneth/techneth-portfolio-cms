@@ -9,7 +9,7 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import { getCaseStudy, updateCaseStudy, deleteCaseStudy, CaseStudyFormData } from '../../actions';
 import { uploadFile } from '@/app/(admin)/actions/upload';
 import CategorySelect from '@/components/admin/CategorySelect';
-import { getNlCategory, getEnCategory } from '@/lib/categories';
+import { getNlCategory, getEnCategory, CASE_STUDY_CATEGORIES } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -336,6 +336,8 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                             <CategorySelect
                                 value={selectedEnCategory}
                                 onChange={setSelectedEnCategory}
+                                options={CASE_STUDY_CATEGORIES}
+                                single
                                 required
                             />
                         </div>

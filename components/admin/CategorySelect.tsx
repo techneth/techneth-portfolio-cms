@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, type Category } from '@/lib/categories';
 import { X, ChevronDown, Check } from 'lucide-react';
 
 interface CategorySelectProps {
-    value: string;           // Comma-separated English category values
+    value: string;           // Comma-separated English category values (single value when `single`)
     onChange: (enValue: string) => void;
     required?: boolean;
     className?: string;
+    options?: Category[];    // Override the selectable category list (defaults to full blog taxonomy)
+    single?: boolean;        // Restrict to a single selected category
 }
 
-export default function CategorySelect({ value, onChange, required, className }: CategorySelectProps) {
+export default function CategorySelect({ value, onChange, required, className, options = CATEGORIES, single }: CategorySelectProps) {
     const [search, setSearch] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -33,10 +35,18 @@ export default function CategorySelect({ value, onChange, required, className }:
     }, []);
 
     const filtered = search.trim()
-        ? CATEGORIES.filter((c) => c.en.toLowerCase().includes(search.toLowerCase().trim()))
-        : CATEGORIES;
+        ? options.filter((c) => c.en.toLowerCase().includes(search.toLowerCase().trim()))
+        : options;
 
     function handleToggle(enValue: string) {
+        if (single) {
+            // Single-select: replace selection, or clear if the same value is re-selected
+            const newValue = selectedLabels.includes(enValue) ? '' : enValue;
+            onChange(newValue);
+            setIsOpen(false);
+            setSearch('');
+            return;
+        }
         let newSelection;
         if (selectedLabels.includes(enValue)) {
             newSelection = selectedLabels.filter(v => v !== enValue);
@@ -99,7 +109,7 @@ export default function CategorySelect({ value, onChange, required, className }:
                             </span>
                         ))
                     ) : (
-                        <span className="text-sm text-gray-400 truncate">Select categories...</span>
+                        <span className="text-sm text-gray-400 truncate">{single ? 'Select category...' : 'Select categories...'}</span>
                     )}
                 </div>
                 {selectedLabels.length > 0 ? (
