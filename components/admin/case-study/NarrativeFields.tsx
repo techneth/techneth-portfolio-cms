@@ -13,7 +13,7 @@
 import { useRef, useState } from 'react';
 import { ChevronDown, Plus, Upload, X, GripVertical } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { uploadFile } from '@/app/(admin)/actions/upload';
+import { uploadImageDirect } from '@/lib/supabase/storage';
 import type {
     CaseStudyFormData,
     CaseStudyMetric,
@@ -259,14 +259,10 @@ function ImageField({
             const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
             const safeSlug = (slug || 'case-study').replace(/[^a-z0-9-]/gi, '-');
             const name = `${subpath}-${Date.now()}.${ext}`;
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('bucket', 'case_studies');
-            fd.append('path', `${safeSlug}/narrative/${name}`);
-            const url = await uploadFile(fd);
+            const url = await uploadImageDirect('case_studies', `${safeSlug}/narrative/${name}`, file);
             if (url) onChange(url);
-        } catch {
-            toast.error('Image upload failed.');
+        } catch (err) {
+            toast.error(err instanceof Error && err.message ? err.message : 'Image upload failed.');
         } finally {
             setUploading(false);
         }

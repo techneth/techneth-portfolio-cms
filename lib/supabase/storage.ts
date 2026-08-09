@@ -1,6 +1,39 @@
 import { createClient } from './client';
+import { createSignedUploadUrl } from '@/app/(admin)/actions/upload';
 
 export type StorageBucket = 'blogs' | 'case_studies';
+
+/**
+ * Upload an image DIRECTLY from the browser to Supabase Storage using a
+ * short-lived signed upload URL minted by a server action.
+ *
+ * The file bytes go straight to Supabase (browser → storage) and never pass
+ * through a Next.js Server Action, so they are not subject to the serverless
+ * request-body size limit. Returns the final public URL.
+ */
+export async function uploadImageDirect(
+    bucket: StorageBucket,
+    path: string,
+    file: File
+): Promise<string> {
+    const { path: signedPath, token, publicUrl } = await createSignedUploadUrl(bucket, path);
+
+    const supabase = createClient();
+    const { error } = await supabase.storage
+        .from(bucket)
+        .uploadToSignedUrl(signedPath, token, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type || undefined,
+        });
+
+    if (error) {
+        console.error('Direct signed-URL upload failed:', error);
+        throw error;
+    }
+
+    return publicUrl;
+}
 
 /**
  * Upload an image to Supabase storage

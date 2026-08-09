@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { promises as fs } from 'fs';
@@ -311,9 +311,9 @@ export async function createJob(jobData: CreateJobData): Promise<Job> {
     });
 
     revalidatePath('/careers');
-    revalidateTag('jobs', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('jobs');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return newJob;
 }
 
@@ -375,10 +375,10 @@ export async function updateJob(id: string, updates: UpdateJobData): Promise<Job
     });
 
     revalidatePath('/careers');
-    revalidateTag('jobs', 'default');
-    revalidateTag(`job-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('jobs');
+    updateTag(`job-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return updatedJob;
 }
 
@@ -471,8 +471,8 @@ export async function deleteJob(id: string): Promise<void> {
         resourceTitle: `Deleted job posting (${id}) and its applications`
     });
 
-    revalidateTag('jobs', 'default');
-    revalidateTag('job-applications', 'default');
+    updateTag('jobs');
+    updateTag('job-applications');
     revalidatePath('/careers');
 }
 
@@ -565,8 +565,8 @@ export async function updateJobApplicationStatus(
     });
 
     revalidatePath('/careers');
-    revalidateTag('job-applications', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('job-applications');
+    updateTag('activity-logs');
 }
 
 export async function sendApplicationEmail(
@@ -638,8 +638,8 @@ export async function sendApplicationEmail(
     });
 
     revalidatePath('/careers');
-    revalidateTag('job-applications', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('job-applications');
+    updateTag('activity-logs');
 }
 
 export async function sendBulkApplicationEmail(
@@ -725,8 +725,8 @@ export async function sendBulkApplicationEmail(
     });
 
     revalidatePath('/careers');
-    revalidateTag('job-applications', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('job-applications');
+    updateTag('activity-logs');
 
     return { sent, failed };
 }
@@ -790,8 +790,8 @@ export async function deleteJobApplication(id: string): Promise<void> {
     });
 
     revalidatePath('/careers');
-    revalidateTag('job-applications', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('job-applications');
+    updateTag('activity-logs');
 }
 
 export async function deleteBulkJobApplications(ids: string[]): Promise<void> {
@@ -856,6 +856,6 @@ export async function deleteBulkJobApplications(ids: string[]): Promise<void> {
     });
 
     revalidatePath('/careers');
-    revalidateTag('job-applications', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('job-applications');
+    updateTag('activity-logs');
 }

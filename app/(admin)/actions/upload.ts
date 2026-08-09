@@ -51,3 +51,55 @@ export async function uploadFile(formData: FormData) {
 
     return publicUrl;
 }
+
+/**
+ * Mint a short-lived signed upload URL so the browser can upload a file DIRECTLY
+ * to Supabase Storage, bypassing the Next.js Server Action request-body limit.
+ *
+ * The service-role client authorises a single object path; the returned token is
+ * consumed client-side via `supabase.storage.from(bucket).uploadToSignedUrl(...)`.
+ * We keep the same auth + permission + bucket checks as `uploadFile`.
+ */
+export async function createSignedUploadUrl(
+    bucket: string,
+    path: string
+): Promise<{ path: string; token: string; publicUrl: string }> {
+    const user = await getCurrentUser();
+    if (!user) {
+        throw new Error('Unauthorized');
+    }
+
+    // Check permissions - Editors and up can upload
+    if (user.role !== 'super_admin' && user.role !== 'admin' && user.role !== 'editor') {
+        throw new Error('Forbidden');
+    }
+
+    if (!bucket || !path) {
+        throw new Error('Missing required fields');
+    }
+
+    // Validate bucket
+    if (!['blogs', 'case_studies'].includes(bucket)) {
+        throw new Error('Invalid bucket');
+    }
+
+    const supabase = createAdminClient() as SupabaseClient<any>;
+
+    // Sanitize path (same rules as uploadFile so paths stay consistent)
+    const sanitizedPath = path.replace(/[^a-zA-Z0-9\/._-]/g, '_');
+
+    const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUploadUrl(sanitizedPath, { upsert: true });
+
+    if (error) {
+        console.error('Server-side signed-upload-url error:', error);
+        throw new Error(error.message);
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(sanitizedPath);
+
+    return { path: data.path, token: data.token, publicUrl };
+}

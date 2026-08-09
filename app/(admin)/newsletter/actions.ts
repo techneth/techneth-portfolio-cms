@@ -16,7 +16,7 @@ import {
     NewsletterConfig,
     DEFAULT_NEWSLETTER_CONFIG,
 } from '@/lib/newsletter/resend';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
@@ -142,7 +142,7 @@ export async function addSubscriber(email: string, name?: string) {
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-subscribers', 'default');
+    updateTag('newsletter-subscribers');
     return { success: true };
 }
 
@@ -181,7 +181,7 @@ export async function setSubscriberStatus(id: string, status: 'active' | 'unsubs
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-subscribers', 'default');
+    updateTag('newsletter-subscribers');
     return { success: true };
 }
 
@@ -216,7 +216,7 @@ export async function deleteSubscriber(id: string) {
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-subscribers', 'default');
+    updateTag('newsletter-subscribers');
     return { success: true };
 }
 
@@ -334,7 +334,7 @@ export async function createCampaign(input: {
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-campaigns', 'default');
+    updateTag('newsletter-campaigns');
     return data as Campaign;
 }
 
@@ -388,7 +388,7 @@ export async function updateCampaign(
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-campaigns', 'default');
+    updateTag('newsletter-campaigns');
     return data as Campaign;
 }
 
@@ -424,7 +424,7 @@ export async function deleteCampaign(id: string) {
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-campaigns', 'default');
+    updateTag('newsletter-campaigns');
     return { success: true };
 }
 
@@ -457,7 +457,7 @@ export async function duplicateCampaign(id: string): Promise<Campaign> {
     if (error) throw error;
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-campaigns', 'default');
+    updateTag('newsletter-campaigns');
     return data as Campaign;
 }
 
@@ -664,8 +664,8 @@ export async function sendCampaign(id: string) {
     });
 
     revalidatePath('/newsletter');
-    revalidateTag('newsletter-campaigns', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('newsletter-campaigns');
+    updateTag('activity-logs');
 
     if (finalStatus === 'failed') {
         throw new Error(lastError || 'All batches failed to send');

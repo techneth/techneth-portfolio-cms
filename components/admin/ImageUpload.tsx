@@ -4,6 +4,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+// Max upload size. Files upload directly to Supabase Storage (via a signed URL),
+// so this is a UX guardrail, not a serverless request-body constraint.
+const MAX_IMAGE_SIZE_MB = 10;
+
 interface ImageUploadProps {
     value: string;
     onChange: (value: string) => void;
@@ -54,9 +58,9 @@ export default function ImageUpload({
             return;
         }
 
-        // Validate file size (max 5MB)
-        if (file.size > 15 * 1024 * 1024) {
-            toast.error('Image size should be less than 5MB');
+        // Validate file size
+        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            toast.error(`Image size should be less than ${MAX_IMAGE_SIZE_MB}MB`);
             return;
         }
 
@@ -142,7 +146,7 @@ export default function ImageUpload({
                     <div className="flex flex-col items-center justify-center h-full text-gray-500">
                         <Upload size={24} className="mb-2" />
                         <p className="text-sm font-medium">{description}</p>
-                        <p className="text-xs mt-1">PNG, JPG, GIF up to 5MB</p>
+                        <p className="text-xs mt-1">PNG, JPG, GIF up to {MAX_IMAGE_SIZE_MB}MB</p>
                         <input
                             type="file"
                             accept="image/*"

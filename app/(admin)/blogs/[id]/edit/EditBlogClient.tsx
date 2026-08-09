@@ -7,7 +7,7 @@ import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { getBlog, updateBlog, deleteBlog, BlogFormData } from '../../actions';
-import { uploadFile } from '@/app/(admin)/actions/upload';
+import { uploadImageDirect } from '@/lib/supabase/storage';
 import CategorySelect from '@/components/admin/CategorySelect';
 import { getNlCategory, getEnCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
@@ -160,12 +160,7 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
                 const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadFormData = new FormData();
-                uploadFormData.append('file', imageFile);
-                uploadFormData.append('bucket', 'blogs');
-                uploadFormData.append('path', filePath);
-
-                const publicUrl = await uploadFile(uploadFormData);
+                const publicUrl = await uploadImageDirect('blogs', filePath, imageFile);
                 if (publicUrl) {
                     imageUrl = publicUrl;
                 }
