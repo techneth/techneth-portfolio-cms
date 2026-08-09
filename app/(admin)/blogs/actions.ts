@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { sanitizeHtmlServer } from '@/lib/sanitize/server';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 
 export interface BlogFormData {
     title: string;
@@ -59,9 +59,9 @@ export async function createBlog(formData: BlogFormData) {
     });
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -102,9 +102,9 @@ export async function createBlogPair(enForm: BlogFormData, nlForm: BlogFormData)
     await supabase.from('blogs').update({ pair_id: enData.id }).eq('id', enData.id);
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return { en: enData, nl: nlData };
 }
 
@@ -123,7 +123,7 @@ export async function linkBlogPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
+    updateTag('blogs');
 }
 
 /** Remove the translation pairing from both posts. */
@@ -140,7 +140,7 @@ export async function unlinkBlogPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
+    updateTag('blogs');
 }
 
 export async function updateBlog(id: string, formData: BlogFormData) {
@@ -195,10 +195,10 @@ export async function updateBlog(id: string, formData: BlogFormData) {
 
     revalidatePath('/blogs');
     revalidatePath(`/blogs/${id}/edit`);
-    revalidateTag('blogs', 'default');
-    revalidateTag(`blog-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag(`blog-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -242,10 +242,10 @@ export async function deleteBlog(id: string) {
     });
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag(`blog-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag(`blog-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
 }
 
 export async function toggleFeaturedBlog(id: string, featured: boolean) {
@@ -295,8 +295,8 @@ export async function toggleFeaturedBlog(id: string, featured: boolean) {
     });
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag(`blog-${id}`, 'default');
+    updateTag('blogs');
+    updateTag(`blog-${id}`);
     return data;
 }
 
@@ -327,10 +327,10 @@ export async function restoreBlog(id: string) {
     });
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag(`blog-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag(`blog-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -396,9 +396,9 @@ export async function permanentlyDeleteBlog(id: string) {
     });
 
     revalidatePath('/blogs');
-    revalidateTag('blogs', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('blogs');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
 }
 
 export async function getBlogs(filters?: {

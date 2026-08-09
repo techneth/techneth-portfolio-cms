@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Save, Globe, X, Plus, Star, Link2, Upload, Monitor } from 'lucide-react';
 import ContentPreview from '@/components/admin/ContentPreview';
 import { createBlogPair, BlogFormData } from '../actions';
-import { uploadFile } from '@/app/(admin)/actions/upload';
+import { uploadImageDirect, StorageBucket } from '@/lib/supabase/storage';
 import CategorySelect from '@/components/admin/CategorySelect';
 import { getNlCategory } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
@@ -23,7 +23,7 @@ function generateSlug(t: string) {
 }
 
 // ─── Image Upload Field ───────────────────────────────────────────────────────
-function ImageUploadField({ label, imageUrl, onUpload, slug, bucket = 'blogs' }: { label: string; imageUrl: string; onUpload: (url: string) => void; slug: string; bucket?: string }) {
+function ImageUploadField({ label, imageUrl, onUpload, slug, bucket = 'blogs' }: { label: string; imageUrl: string; onUpload: (url: string) => void; slug: string; bucket?: StorageBucket }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
     const [dragOver, setDragOver] = useState(false);
@@ -33,9 +33,8 @@ function ImageUploadField({ label, imageUrl, onUpload, slug, bucket = 'blogs' }:
         try {
             const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
             const safe = (slug || 'featured').replace(/[^a-z0-9-]/g, '-');
-            const fd = new FormData(); fd.append('file', file); fd.append('bucket', bucket); fd.append('path', `${safe}/${safe}.${ext}`);
-            const url = await uploadFile(fd); if (url) onUpload(url);
-        } catch { toast.error('Image upload failed.'); } finally { setUploading(false); }
+            const url = await uploadImageDirect(bucket, `${safe}/${safe}.${ext}`, file); if (url) onUpload(url);
+        } catch (err) { toast.error(err instanceof Error && err.message ? err.message : 'Image upload failed.'); } finally { setUploading(false); }
     };
     return (
         <div className="space-y-2">

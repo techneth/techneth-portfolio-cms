@@ -1,6 +1,5 @@
 import { useRef } from 'react';
-import { StorageBucket } from '@/lib/supabase/storage';
-import { uploadFile } from '@/app/(admin)/actions/upload';
+import { StorageBucket, uploadImageDirect } from '@/lib/supabase/storage';
 
 /** Convert an arbitrary string to a URL-safe slug */
 export function toSlug(text: string): string {
@@ -60,12 +59,7 @@ export function useImageUploadQueue() {
                 const fileName = `${baseSlug}-${index + 1}.${fileExt}`;
                 const filePath = `${basePath}/${fileName}`;
 
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('bucket', bucket);
-                formData.append('path', filePath);
-
-                const publicUrl = await uploadFile(formData);
+                const publicUrl = await uploadImageDirect(bucket, filePath, file);
                 return { blobUrl, publicUrl };
             })
         );

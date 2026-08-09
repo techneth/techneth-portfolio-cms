@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { sanitizeHtmlServer } from '@/lib/sanitize/server';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 
 /** A single headline metric on the teal "results at a glance" band. */
 export interface CaseStudyMetric {
@@ -143,9 +143,9 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -183,9 +183,9 @@ export async function createCaseStudyPair(enForm: CaseStudyFormData, nlForm: Cas
     await supabase.from('case_studies').update({ pair_id: enData.id }).eq('id', enData.id);
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return { en: enData, nl: nlData };
 }
 
@@ -203,7 +203,7 @@ export async function linkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
+    updateTag('case-studies');
 }
 
 /** Remove the translation pairing from both posts. */
@@ -220,7 +220,7 @@ export async function unlinkCaseStudyPair(idA: string, idB: string) {
 
     if (error) throw error;
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
+    updateTag('case-studies');
 }
 
 export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
@@ -272,10 +272,10 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag(`case-study-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag(`case-study-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -318,10 +318,10 @@ export async function deleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag(`case-study-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag(`case-study-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
 }
 
 export async function restoreCaseStudy(id: string) {
@@ -351,10 +351,10 @@ export async function restoreCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag(`case-study-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag(`case-study-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -420,9 +420,9 @@ export async function permanentlyDeleteCaseStudy(id: string) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('case-studies');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
 }
 
 export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
@@ -472,8 +472,8 @@ export async function toggleFeaturedCaseStudy(id: string, featured: boolean) {
     });
 
     revalidatePath('/case-studies');
-    revalidateTag('case-studies', 'default');
-    revalidateTag(`case-study-${id}`, 'default');
+    updateTag('case-studies');
+    updateTag(`case-study-${id}`);
     return data;
 }
 

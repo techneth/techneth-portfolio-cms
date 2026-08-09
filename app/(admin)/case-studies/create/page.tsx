@@ -7,7 +7,7 @@ import Link from 'next/link';
 import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { createCaseStudy, CaseStudyFormData } from '../actions';
-import { uploadFile } from '@/app/(admin)/actions/upload';
+import { uploadImageDirect } from '@/lib/supabase/storage';
 import CategorySelect from '@/components/admin/CategorySelect';
 import { getNlCategory, getEnCategory, CASE_STUDY_CATEGORIES } from '@/lib/categories';
 import { toast } from 'react-hot-toast';
@@ -165,19 +165,14 @@ export default function CreateCaseStudyPage() {
         try {
             let imageUrl = formData.featured_image;
 
-            // Upload image if selected
+            // Upload image if selected (direct browser → Supabase, bypasses body limit)
             if (imageFile) {
                 toast.loading('Uploading image...', { id: toastId });
                 const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
                 const fileName = `${formData.slug || 'featured'}.${fileExt}`;
                 const filePath = `${formData.slug || 'uncategorized'}/${fileName}`;
 
-                const uploadFormData = new FormData();
-                uploadFormData.append('file', imageFile);
-                uploadFormData.append('bucket', 'case_studies');
-                uploadFormData.append('path', filePath);
-
-                const publicUrl = await uploadFile(uploadFormData);
+                const publicUrl = await uploadImageDirect('case_studies', filePath, imageFile);
                 if (publicUrl) {
                     imageUrl = publicUrl;
                 }
@@ -207,7 +202,8 @@ export default function CreateCaseStudyPage() {
             router.push('/case-studies');
         } catch (error) {
             console.error('Error creating case study:', error);
-            toast.error('Failed to create case study', { id: toastId });
+            const message = error instanceof Error && error.message ? error.message : 'Failed to create case study';
+            toast.error(message, { id: toastId });
         } finally {
             setLoading(false);
         }

@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import path from 'path';
@@ -108,10 +108,10 @@ export async function updateContactStatus(
     });
 
     revalidatePath('/contacts');
-    revalidateTag('contacts', 'default');
-    revalidateTag(`contact-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('contacts');
+    updateTag(`contact-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -155,8 +155,8 @@ export async function addInternalNote(id: string, note: string) {
     });
 
     revalidatePath('/contacts');
-    revalidateTag('contacts', 'default');
-    revalidateTag(`contact-${id}`, 'default');
+    updateTag('contacts');
+    updateTag(`contact-${id}`);
     return data;
 }
 
@@ -278,10 +278,10 @@ export async function replyToContact(id: string, subject: string, message: strin
     });
 
     revalidatePath('/contacts');
-    revalidateTag('contacts', 'default');
-    revalidateTag(`contact-${id}`, 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('contacts');
+    updateTag(`contact-${id}`);
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return data;
 }
 
@@ -321,8 +321,8 @@ export async function deleteContact(id: string) {
     });
 
     revalidatePath('/contacts');
-    revalidateTag('contacts', 'default');
-    revalidateTag('dashboard-stats', 'default');
-    revalidateTag('activity-logs', 'default');
+    updateTag('contacts');
+    updateTag('dashboard-stats');
+    updateTag('activity-logs');
     return { success: true };
 }
