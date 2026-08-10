@@ -15,6 +15,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
 import ContentPreview from '@/components/admin/ContentPreview';
+import { useFormDraft, readFormDraft, clearFormDraft, StoredDraft } from '@/hooks/useFormDraft';
+import DraftRestoreBanner from '@/components/admin/DraftRestoreBanner';
+
+type BlogDraft = { formData: BlogFormData; selectedEnCategory: string };
+const DRAFT_KEY = 'blog:create';
 
 export default function CreateBlogPage() {
     const router = useRouter();
@@ -104,6 +109,32 @@ export default function CreateBlogPage() {
         });
     };
 
+    // ── Draft persistence (survives refresh / accidental close / failed save) ──
+    const [recoveredDraft, setRecoveredDraft] = useState<StoredDraft<BlogDraft> | null>(null);
+    const draftValue = useMemo<BlogDraft>(
+        () => ({ formData, selectedEnCategory }),
+        [formData, selectedEnCategory]
+    );
+    useFormDraft<BlogDraft>(DRAFT_KEY, draftValue, {
+        enabled: Boolean(formData.title || formData.content || formData.excerpt) && !recoveredDraft,
+    });
+    useEffect(() => {
+        const draft = readFormDraft<BlogDraft>(DRAFT_KEY);
+        if (draft && (draft.value.formData?.title || draft.value.formData?.content)) {
+            setRecoveredDraft(draft);
+        }
+    }, []);
+    const restoreDraft = () => {
+        if (!recoveredDraft) return;
+        setFormData(recoveredDraft.value.formData);
+        setSelectedEnCategory(recoveredDraft.value.selectedEnCategory || '');
+        setRecoveredDraft(null);
+    };
+    const discardDraft = () => {
+        clearFormDraft(DRAFT_KEY);
+        setRecoveredDraft(null);
+    };
+
     const handleSubmit = async (e: React.FormEvent, status: 'draft' | 'published') => {
         e.preventDefault();
 
@@ -191,6 +222,7 @@ export default function CreateBlogPage() {
 
             toast.success('Blog created successfully!', { id: toastId });
             clearQueue();
+            clearFormDraft(DRAFT_KEY);
             router.push('/blogs');
         } catch (error) {
             console.error('Error creating blog:', error);
@@ -255,6 +287,13 @@ export default function CreateBlogPage() {
 
             {/* Form */}
             <form className="space-y-6">
+                {recoveredDraft && (
+                    <DraftRestoreBanner
+                        savedAt={recoveredDraft.savedAt}
+                        onRestore={restoreDraft}
+                        onDiscard={discardDraft}
+                    />
+                )}
                 {/* Basic Information */}
                 <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h3>
