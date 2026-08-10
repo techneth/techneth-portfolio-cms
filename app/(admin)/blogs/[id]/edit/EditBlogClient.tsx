@@ -17,6 +17,10 @@ import ValidationModal from '@/components/admin/ValidationModal';
 import Modal from '@/components/admin/Modal';
 import { AlertTriangle } from 'lucide-react';
 import ContentPreview from '@/components/admin/ContentPreview';
+import { useFormDraft, readFormDraft, clearFormDraft, StoredDraft } from '@/hooks/useFormDraft';
+import DraftRestoreBanner from '@/components/admin/DraftRestoreBanner';
+
+type BlogDraft = { formData: BlogFormData; selectedEnCategory: string };
 
 export default function EditBlogClient({ id, initialData }: { id: string, initialData: any }) {
     
@@ -27,6 +31,8 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
     const [selectedEnCategory, setSelectedEnCategory] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [hydrated, setHydrated] = useState(false);
+    const [recoveredDraft, setRecoveredDraft] = useState<StoredDraft<BlogDraft> | null>(null);
     const [formData, setFormData] = useState<BlogFormData>({
         title: '',
         slug: '',
@@ -74,8 +80,39 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
             });
             setSelectedEnCategory(getEnCategory(initialData.category || ''));
             setLoading(false);
+            setHydrated(true);
         }
     }, [initialData]);
+
+    // ── Draft persistence (survives refresh / accidental close / failed save) ──
+    const draftKey = `blog:edit:${id}`;
+    const draftValue = useMemo<BlogDraft>(
+        () => ({ formData, selectedEnCategory }),
+        [formData, selectedEnCategory]
+    );
+    useFormDraft<BlogDraft>(draftKey, draftValue, { enabled: hydrated && !recoveredDraft });
+    useEffect(() => {
+        if (!hydrated) return;
+        const draft = readFormDraft<BlogDraft>(draftKey);
+        if (
+            draft?.value?.formData &&
+            (draft.value.formData.content !== initialData?.content ||
+                draft.value.formData.title !== initialData?.title)
+        ) {
+            setRecoveredDraft(draft);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hydrated]);
+    const restoreDraft = () => {
+        if (!recoveredDraft) return;
+        setFormData(recoveredDraft.value.formData);
+        setSelectedEnCategory(recoveredDraft.value.selectedEnCategory || '');
+        setRecoveredDraft(null);
+    };
+    const discardDraft = () => {
+        clearFormDraft(draftKey);
+        setRecoveredDraft(null);
+    };
 
     const handleTitleChange = (title: string) => {
         setFormData({
@@ -187,6 +224,7 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
 
             toast.success('Blog updated successfully!', { id: toastId });
             clearQueue();
+            clearFormDraft(draftKey);
             router.push('/blogs');
         } catch (error) {
             console.error('Error updating blog:', error);
@@ -283,6 +321,13 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
 
             {/* Form */}
             <form className="space-y-6">
+                {recoveredDraft && (
+                    <DraftRestoreBanner
+                        savedAt={recoveredDraft.savedAt}
+                        onRestore={restoreDraft}
+                        onDiscard={discardDraft}
+                    />
+                )}
                 {/* Basic Information */}
                 <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h3>

@@ -16,6 +16,11 @@ import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
 import ValidationModal from '@/components/admin/ValidationModal';
 import ContentPreview from '@/components/admin/ContentPreview';
 import CaseStudyNarrativeFields, { narrativeDefaults } from '@/components/admin/case-study/NarrativeFields';
+import { useFormDraft, readFormDraft, clearFormDraft, StoredDraft } from '@/hooks/useFormDraft';
+import DraftRestoreBanner from '@/components/admin/DraftRestoreBanner';
+
+type CaseStudyDraft = { formData: CaseStudyFormData; selectedEnCategory: string };
+const DRAFT_KEY = 'case-study:create';
 
 export default function CreateCaseStudyPage() {
     const router = useRouter();
@@ -56,6 +61,32 @@ export default function CreateCaseStudyPage() {
         () => formData.featured_image || (imageFile ? URL.createObjectURL(imageFile) : ''),
         [formData.featured_image, imageFile]
     );
+
+    // ── Draft persistence (survives refresh / accidental close / failed save) ──
+    const [recoveredDraft, setRecoveredDraft] = useState<StoredDraft<CaseStudyDraft> | null>(null);
+    const draftValue = useMemo<CaseStudyDraft>(
+        () => ({ formData, selectedEnCategory }),
+        [formData, selectedEnCategory]
+    );
+    useFormDraft<CaseStudyDraft>(DRAFT_KEY, draftValue, {
+        enabled: Boolean(formData.title || formData.content || formData.excerpt) && !recoveredDraft,
+    });
+    useEffect(() => {
+        const draft = readFormDraft<CaseStudyDraft>(DRAFT_KEY);
+        if (draft && (draft.value.formData?.title || draft.value.formData?.content)) {
+            setRecoveredDraft(draft);
+        }
+    }, []);
+    const restoreDraft = () => {
+        if (!recoveredDraft) return;
+        setFormData(recoveredDraft.value.formData);
+        setSelectedEnCategory(recoveredDraft.value.selectedEnCategory || '');
+        setRecoveredDraft(null);
+    };
+    const discardDraft = () => {
+        clearFormDraft(DRAFT_KEY);
+        setRecoveredDraft(null);
+    };
 
     // Pre-fill from query params when creating a counterpart version
     useEffect(() => {
@@ -199,6 +230,7 @@ export default function CreateCaseStudyPage() {
 
             toast.success('Case study created successfully!', { id: toastId });
             clearQueue();
+            clearFormDraft(DRAFT_KEY);
             router.push('/case-studies');
         } catch (error) {
             console.error('Error creating case study:', error);
@@ -263,6 +295,13 @@ export default function CreateCaseStudyPage() {
 
             {/* Form */}
             <form className="space-y-6">
+                {recoveredDraft && (
+                    <DraftRestoreBanner
+                        savedAt={recoveredDraft.savedAt}
+                        onRestore={restoreDraft}
+                        onDiscard={discardDraft}
+                    />
+                )}
                 {/* Basic Information */}
                 <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h3>

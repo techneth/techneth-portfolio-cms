@@ -18,6 +18,10 @@ import Modal from '@/components/admin/Modal';
 import { AlertTriangle } from 'lucide-react';
 import ContentPreview from '@/components/admin/ContentPreview';
 import CaseStudyNarrativeFields, { narrativeDefaults, hydrateNarrative } from '@/components/admin/case-study/NarrativeFields';
+import { useFormDraft, readFormDraft, clearFormDraft, StoredDraft } from '@/hooks/useFormDraft';
+import DraftRestoreBanner from '@/components/admin/DraftRestoreBanner';
+
+type CaseStudyDraft = { formData: CaseStudyFormData; selectedEnCategory: string };
 
 export default function EditCaseStudyClient({ id, initialData }: { id: string, initialData: any }) {
     const params = useParams();
@@ -29,6 +33,8 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
     const [selectedEnCategory, setSelectedEnCategory] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [hydrated, setHydrated] = useState(false);
+    const [recoveredDraft, setRecoveredDraft] = useState<StoredDraft<CaseStudyDraft> | null>(null);
     const [formData, setFormData] = useState<CaseStudyFormData>({
         title: '',
         slug: '',
@@ -84,8 +90,39 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
             });
             setSelectedEnCategory(getEnCategory(initialData.category || ''));
             setLoading(false);
+            setHydrated(true);
         }
     }, [initialData]);
+
+    // ── Draft persistence (survives refresh / accidental close / failed save) ──
+    const draftKey = `case-study:edit:${id}`;
+    const draftValue = useMemo<CaseStudyDraft>(
+        () => ({ formData, selectedEnCategory }),
+        [formData, selectedEnCategory]
+    );
+    useFormDraft<CaseStudyDraft>(draftKey, draftValue, { enabled: hydrated && !recoveredDraft });
+    useEffect(() => {
+        if (!hydrated) return;
+        const draft = readFormDraft<CaseStudyDraft>(draftKey);
+        if (
+            draft?.value?.formData &&
+            (draft.value.formData.content !== initialData?.content ||
+                draft.value.formData.title !== initialData?.title)
+        ) {
+            setRecoveredDraft(draft);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hydrated]);
+    const restoreDraft = () => {
+        if (!recoveredDraft) return;
+        setFormData(recoveredDraft.value.formData);
+        setSelectedEnCategory(recoveredDraft.value.selectedEnCategory || '');
+        setRecoveredDraft(null);
+    };
+    const discardDraft = () => {
+        clearFormDraft(draftKey);
+        setRecoveredDraft(null);
+    };
 
     const handleTitleChange = (title: string) => {
         setFormData({
@@ -199,6 +236,7 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
             });
 
             toast.success('Case study updated successfully!', { id: toastId });
+            clearFormDraft(draftKey);
             clearQueue();
             router.push('/case-studies');
         } catch (error) {
@@ -297,6 +335,13 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
 
             {/* Form */}
             <form className="space-y-6">
+                {recoveredDraft && (
+                    <DraftRestoreBanner
+                        savedAt={recoveredDraft.savedAt}
+                        onRestore={restoreDraft}
+                        onDiscard={discardDraft}
+                    />
+                )}
                 {/* Basic Information */}
                 <div className="admin-card p-4 sm:p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h3>
