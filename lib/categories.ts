@@ -137,8 +137,9 @@ export const CATEGORIES: Category[] = [
 ];
 
 /**
- * Case studies use a fixed, single-select shortlist of top-level service categories
- * (not the full blog taxonomy above). Only one of these may be selected per case study.
+ * Case studies use a fixed shortlist of top-level service categories
+ * (not the full blog taxonomy above). One or more of these may be selected per
+ * case study; multiple values are stored as a comma-separated string.
  */
 export const CASE_STUDY_CATEGORIES: Category[] = [
     { en: 'Web Development', nl: 'Web Development' },
