@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Edit, Trash2, Star, AlertTriangle, RotateCcw, Trash, Globe, Link2, Unlink2 } from 'lucide-react';
 import { getCaseStudies, deleteCaseStudy, restoreCaseStudy, permanentlyDeleteCaseStudy, toggleFeaturedCaseStudy, linkCaseStudyPair, unlinkCaseStudyPair } from './actions';
-import { format } from 'date-fns';
+import { formatDateSafe } from '@/lib/format-date';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
 
@@ -157,7 +157,7 @@ function CaseStudyCard({ cs, partner, viewFilter, onDelete, onPermanentDelete, o
                 {cs.industry && <><span>·</span><span>{cs.industry}</span></>}
                 {cs.category && <><span>·</span><span>{cs.category}</span></>}
                 <span>·</span>
-                <span>{format(new Date(cs.created_at), 'MMM d, yyyy')}</span>
+                <span>{formatDateSafe(cs.created_at)}</span>
             </div>
 
             <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">

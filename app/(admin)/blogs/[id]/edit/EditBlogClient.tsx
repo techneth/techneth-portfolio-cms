@@ -214,13 +214,18 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
             );
 
             const categoryToSave = formData.is_english ? selectedEnCategory : getNlCategory(selectedEnCategory);
-            await updateBlog(id, {
+            const result = await updateBlog(id, {
                 ...formData,
                 category: categoryToSave,
                 content: processedContent,
                 featured_image: imageUrl,
                 status
             });
+
+            if (result && 'error' in result && result.error) {
+                toast.error(result.error, { id: toastId });
+                return;
+            }
 
             toast.success('Blog updated successfully!', { id: toastId });
             clearQueue();

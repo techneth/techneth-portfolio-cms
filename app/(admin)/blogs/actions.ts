@@ -45,7 +45,13 @@ export async function createBlog(formData: BlogFormData) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        // Duplicate slug — return a clear message (thrown errors are redacted in prod).
+        if (error.code === '23505') {
+            return { error: `A blog with the slug "${formData.slug}" already exists (it may be in Trash — permanently delete it there to reuse the slug), or choose a different slug.` };
+        }
+        throw error;
+    }
 
     // Log activity
     await logActivity({
@@ -62,7 +68,7 @@ export async function createBlog(formData: BlogFormData) {
     updateTag('blogs');
     updateTag('dashboard-stats');
     updateTag('activity-logs');
-    return data;
+    return { data };
 }
 
 /** Create an English + Dutch blog post together, automatically linked as a pair. */
@@ -180,7 +186,13 @@ export async function updateBlog(id: string, formData: BlogFormData) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        // Duplicate slug — return a clear message (thrown errors are redacted in prod).
+        if (error.code === '23505') {
+            return { error: `Another blog already uses the slug "${formData.slug}" (it may be in Trash — permanently delete it there to reuse the slug), or choose a different slug.` };
+        }
+        throw error;
+    }
 
     // Log activity
     await logActivity({
@@ -199,7 +211,7 @@ export async function updateBlog(id: string, formData: BlogFormData) {
     updateTag(`blog-${id}`);
     updateTag('dashboard-stats');
     updateTag('activity-logs');
-    return data;
+    return { data };
 }
 
 export async function deleteBlog(id: string) {
@@ -211,7 +223,7 @@ export async function deleteBlog(id: string) {
     // Get blog to check ownership and get title for logging
     const { data: blog } = await supabase
         .from('blogs')
-        .select('id, title, created_by')
+        .select('id, title, slug, created_by')
         .eq('id', id)
         .single();
 
@@ -221,10 +233,12 @@ export async function deleteBlog(id: string) {
         throw new Error('Forbidden');
     }
 
-    // Soft delete
+    // Soft delete, and free the slug (unique constraint applies to trashed rows
+    // too). Reclaimed on restore (see restoreBlog).
+    const freedSlug = blog.slug ? `${blog.slug}--del-${Date.now().toString(36)}` : blog.slug;
     const { error } = await supabase
         .from('blogs')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({ deleted_at: new Date().toISOString(), slug: freedSlug })
         .eq('id', id);
 
     if (error) throw error;
@@ -306,9 +320,31 @@ export async function restoreBlog(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
+    // Try to reclaim the original slug (stripped of the "--del-*" marker) if no
+    // active blog is using it; otherwise keep the current one.
+    const { data: existing } = await supabase
+        .from('blogs')
+        .select('id, slug')
+        .eq('id', id)
+        .single();
+
+    let restoreSlug: string | undefined = existing?.slug ?? undefined;
+    if (restoreSlug) {
+        const base = restoreSlug.replace(/--del-[a-z0-9]+$/, '');
+        if (base && base !== restoreSlug) {
+            const { data: clash } = await supabase
+                .from('blogs')
+                .select('id')
+                .eq('slug', base)
+                .is('deleted_at', null)
+                .maybeSingle();
+            if (!clash) restoreSlug = base;
+        }
+    }
+
     const { data, error } = await supabase
         .from('blogs')
-        .update({ deleted_at: null })
+        .update({ deleted_at: null, ...(restoreSlug ? { slug: restoreSlug } : {}) })
         .eq('id', id)
         .select()
         .single();

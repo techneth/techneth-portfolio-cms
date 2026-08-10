@@ -130,7 +130,14 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        // Duplicate slug — return a clear, user-fixable message. (Thrown errors
+        // are redacted to a generic digest in production, so we RETURN instead.)
+        if (error.code === '23505') {
+            return { error: `A case study with the slug "${formData.slug}" already exists (it may be in Trash — permanently delete it there to reuse the slug), or choose a different slug.` };
+        }
+        throw error;
+    }
 
     await logActivity({
         userId: user.id,
@@ -146,7 +153,7 @@ export async function createCaseStudy(formData: CaseStudyFormData) {
     updateTag('case-studies');
     updateTag('dashboard-stats');
     updateTag('activity-logs');
-    return data;
+    return { data };
 }
 
 /** Create an English + Dutch case study together, automatically linked as a pair. */
@@ -259,7 +266,13 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        // Duplicate slug — return a clear message (thrown errors are redacted in prod).
+        if (error.code === '23505') {
+            return { error: `Another case study already uses the slug "${formData.slug}" (it may be in Trash — permanently delete it there to reuse the slug), or choose a different slug.` };
+        }
+        throw error;
+    }
 
     await logActivity({
         userId: user.id,
@@ -276,7 +289,7 @@ export async function updateCaseStudy(id: string, formData: CaseStudyFormData) {
     updateTag(`case-study-${id}`);
     updateTag('dashboard-stats');
     updateTag('activity-logs');
-    return data;
+    return { data };
 }
 
 export async function deleteCaseStudy(id: string) {
@@ -288,7 +301,7 @@ export async function deleteCaseStudy(id: string) {
     // Get case study for ownership check
     const { data: caseStudy } = await supabase
         .from('case_studies')
-        .select('id, title, created_by')
+        .select('id, title, slug, created_by')
         .eq('id', id)
         .single();
 
@@ -298,10 +311,13 @@ export async function deleteCaseStudy(id: string) {
         throw new Error('Forbidden');
     }
 
-    // Soft delete
+    // Soft delete. Also free up the slug so a new case study can reuse it — the
+    // unique constraint applies to trashed rows too. The original slug is
+    // reclaimed on restore (see restoreCaseStudy). Marker suffix is recoverable.
+    const freedSlug = caseStudy.slug ? `${caseStudy.slug}--del-${Date.now().toString(36)}` : caseStudy.slug;
     const { error } = await supabase
         .from('case_studies')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({ deleted_at: new Date().toISOString(), slug: freedSlug })
         .eq('id', id);
 
     if (error) throw error;
@@ -330,9 +346,31 @@ export async function restoreCaseStudy(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
+    // Try to reclaim the original slug (stripped of the "--del-*" marker added
+    // on delete) if no active case study is using it; otherwise keep as-is.
+    const { data: existing } = await supabase
+        .from('case_studies')
+        .select('id, slug')
+        .eq('id', id)
+        .single();
+
+    let restoreSlug: string | undefined = existing?.slug ?? undefined;
+    if (restoreSlug) {
+        const base = restoreSlug.replace(/--del-[a-z0-9]+$/, '');
+        if (base && base !== restoreSlug) {
+            const { data: clash } = await supabase
+                .from('case_studies')
+                .select('id')
+                .eq('slug', base)
+                .is('deleted_at', null)
+                .maybeSingle();
+            if (!clash) restoreSlug = base;
+        }
+    }
+
     const { data, error } = await supabase
         .from('case_studies')
-        .update({ deleted_at: null })
+        .update({ deleted_at: null, ...(restoreSlug ? { slug: restoreSlug } : {}) })
         .eq('id', id)
         .select()
         .single();
