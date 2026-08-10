@@ -408,7 +408,7 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Content *</h3>
                     <MarkdownEditor
                         value={formData.content}
-                        onChange={(value) => setFormData({ ...formData, content: value })}
+                        onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
                         onImageSelect={addImage}
                         seoKeywords={formData.seo_keywords}
                         onValidationCheck={setEditorWarnings}

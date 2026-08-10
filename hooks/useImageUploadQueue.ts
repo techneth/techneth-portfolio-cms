@@ -10,9 +10,23 @@ export function toSlug(text: string): string {
         .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Short, collision-resistant token used to make each uploaded file name unique.
+ * Without this, index-based names (image-1, image-2, …) collide across draft
+ * re-saves and edits and — combined with Supabase `upsert: true` — silently
+ * overwrite previously uploaded images (duplicates / vanishing images).
+ */
+function uniqueToken(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID().slice(0, 8);
+    }
+    return Math.random().toString(36).slice(2, 10);
+}
+
 export function useImageUploadQueue() {
-    // Use a ref so the map persists across renders without causing re-renders
-    const pendingImages = useRef<Map<string, File>>(new Map());
+    // Use a ref so the map persists across renders without causing re-renders.
+    // Each blob URL maps to its File plus a stable unique token minted at add time.
+    const pendingImages = useRef<Map<string, { file: File; token: string }>>(new Map());
 
     /**
      * Register a file and return a blob URL for immediate preview in the editor.
@@ -20,7 +34,7 @@ export function useImageUploadQueue() {
      */
     const addImage = (file: File): string => {
         const url = URL.createObjectURL(file);
-        pendingImages.current.set(url, file);
+        pendingImages.current.set(url, { file, token: uniqueToken() });
         return url;
     };
 
@@ -39,11 +53,11 @@ export function useImageUploadQueue() {
         basePath: string,
         nameSlug?: string
     ): Promise<string> => {
-        const blobsToUpload: { blobUrl: string; file: File }[] = [];
+        const blobsToUpload: { blobUrl: string; file: File; token: string }[] = [];
 
-        for (const [blobUrl, file] of pendingImages.current.entries()) {
+        for (const [blobUrl, { file, token }] of pendingImages.current.entries()) {
             if (content.includes(blobUrl)) {
-                blobsToUpload.push({ blobUrl, file });
+                blobsToUpload.push({ blobUrl, file, token });
             }
         }
 
@@ -53,10 +67,11 @@ export function useImageUploadQueue() {
 
         // Upload all pending images in parallel
         const uploadResults = await Promise.all(
-            blobsToUpload.map(async ({ blobUrl, file }, index) => {
+            blobsToUpload.map(async ({ blobUrl, file, token }) => {
                 const fileExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
-                // e.g. "my-blog-post-1.jpg", "my-blog-post-2.jpg"
-                const fileName = `${baseSlug}-${index + 1}.${fileExt}`;
+                // Unique per image (e.g. "my-blog-post-a1b2c3d4.jpg") so a re-save
+                // or edit never overwrites a previously uploaded file at the same path.
+                const fileName = `${baseSlug}-${token}.${fileExt}`;
                 const filePath = `${basePath}/${fileName}`;
 
                 const publicUrl = await uploadImageDirect(bucket, filePath, file);
