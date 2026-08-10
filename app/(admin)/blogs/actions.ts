@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { sanitizeHtmlServer } from '@/lib/sanitize/server';
-import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 
 export interface BlogFormData {
     title: string;
@@ -411,56 +411,43 @@ export async function getBlogs(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    // Build a stable cache key from the filters
-    const cacheKey = [
-        'blogs-list',
-        filters?.status ?? 'all',
-        filters?.search ?? '',
-        filters?.deleted ? 'trash' : 'active',
-        user.role, // Different roles may see different data
-    ];
+    // NOTE: not wrapped in unstable_cache — the cookie-backed Supabase client
+    // cannot run inside a cache scope in Next 16 (throws "used cookies inside a
+    // function cached with unstable_cache", seen as a Server Components render
+    // error on save). Admin reads must be fresh (read-your-own-writes) anyway.
+    let query = supabase
+        .from('blogs')
+        .select('id, title, slug, author_name, status, category, featured, is_english, pair_id, created_at, created_by, deleted_at')
+        .order('created_at', { ascending: false });
 
-    const fetchBlogs = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('blogs')
-                .select('id, title, slug, author_name, status, category, featured, is_english, pair_id, created_at, created_by, deleted_at')
-                .order('created_at', { ascending: false });
+    if (filters?.deleted) {
+        if (!canPerformAction(user, 'delete', 'blog')) return [];
+        query = query.not('deleted_at', 'is', null);
+    } else {
+        query = query.is('deleted_at', null);
+    }
 
-            if (filters?.deleted) {
-                if (!canPerformAction(user, 'delete', 'blog')) return [];
-                query = query.not('deleted_at', 'is', null);
-            } else {
-                query = query.is('deleted_at', null);
-            }
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
+    }
 
-            if (filters?.status) query = query.eq('status', filters.status);
-            if (filters?.search) {
-                query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
-            }
-
-            const { data, error } = await query;
-            if (error) {
-                // pair_id column may not exist yet — fall back without it
-                const fallbackQuery = supabase
-                    .from('blogs')
-                    .select('id, title, slug, author_name, status, category, featured, is_english, created_at, created_by, deleted_at')
-                    .order('created_at', { ascending: false });
-                if (filters?.deleted) fallbackQuery.not('deleted_at', 'is', null);
-                else fallbackQuery.is('deleted_at', null);
-                if (filters?.status) fallbackQuery.eq('status', filters.status);
-                if (filters?.search) fallbackQuery.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
-                const { data: fbData, error: fbError } = await fallbackQuery;
-                if (fbError) throw fbError;
-                return (fbData ?? []).map((b: any) => ({ ...b, pair_id: null }));
-            }
-            return data ?? [];
-        },
-        cacheKey,
-        { tags: ['blogs'], revalidate: 60 }
-    );
-
-    return fetchBlogs();
+    const { data, error } = await query;
+    if (error) {
+        // pair_id column may not exist yet — fall back without it
+        const fallbackQuery = supabase
+            .from('blogs')
+            .select('id, title, slug, author_name, status, category, featured, is_english, created_at, created_by, deleted_at')
+            .order('created_at', { ascending: false });
+        if (filters?.deleted) fallbackQuery.not('deleted_at', 'is', null);
+        else fallbackQuery.is('deleted_at', null);
+        if (filters?.status) fallbackQuery.eq('status', filters.status);
+        if (filters?.search) fallbackQuery.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
+        const { data: fbData, error: fbError } = await fallbackQuery;
+        if (fbError) throw fbError;
+        return (fbData ?? []).map((b: any) => ({ ...b, pair_id: null }));
+    }
+    return data ?? [];
 }
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -474,22 +461,16 @@ export async function getBlog(id: string): Promise<Database['public']['Tables'][
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchBlog = unstable_cache(
-        async () => {
-            const { data, error } = await supabase
-                .from('blogs')
-                .select('*')
-                .eq('id', id)
-                .single();
+    // Not cached: see the note in getBlogs — cookie-backed client can't run
+    // inside unstable_cache in Next 16.
+    const { data, error } = await supabase
+        .from('blogs')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-            if (error) throw error;
-            if (!data) throw new Error('Blog not found');
+    if (error) throw error;
+    if (!data) throw new Error('Blog not found');
 
-            return data;
-        },
-        [`blog-${id}`],
-        { tags: [`blog-${id}`, 'blogs'], revalidate: 300 }
-    );
-
-    return fetchBlog() as Promise<Database['public']['Tables']['blogs']['Row']>;
+    return data as Database['public']['Tables']['blogs']['Row'];
 }

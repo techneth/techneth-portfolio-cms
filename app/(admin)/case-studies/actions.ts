@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { sanitizeHtmlServer } from '@/lib/sanitize/server';
-import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 
 /** A single headline metric on the teal "results at a glance" band. */
 export interface CaseStudyMetric {
@@ -487,55 +487,45 @@ export async function getCaseStudies(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const cacheKey = [
-        'case-studies-list',
-        filters?.status ?? 'all',
-        filters?.search ?? '',
-        filters?.deleted ? 'trash' : 'active',
-        user.role,
-    ];
+    // NOTE: do NOT wrap this in unstable_cache. The Supabase server client reads
+    // cookies lazily on every query, and touching cookies inside a cache scope
+    // throws in Next 16 ("used cookies inside a function cached with
+    // unstable_cache") — which surfaced as a Server Components render error on
+    // save (updateTag invalidates the tag → cache miss → callback runs).
+    // Admin reads are low-volume and must be fresh (read-your-own-writes) anyway.
+    let query = supabase
+        .from('case_studies')
+        .select('id, title, slug, category, client_name, industry, status, featured, is_english, pair_id, created_at, created_by, deleted_at')
+        .order('created_at', { ascending: false });
 
-    const fetchCaseStudies = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('case_studies')
-                .select('id, title, slug, category, client_name, industry, status, featured, is_english, pair_id, created_at, created_by, deleted_at')
-                .order('created_at', { ascending: false });
+    if (filters?.deleted) {
+        if (!canPerformAction(user, 'delete', 'case_study')) return [];
+        query = query.not('deleted_at', 'is', null);
+    } else {
+        query = query.is('deleted_at', null);
+    }
 
-            if (filters?.deleted) {
-                if (!canPerformAction(user, 'delete', 'case_study')) return [];
-                query = query.not('deleted_at', 'is', null);
-            } else {
-                query = query.is('deleted_at', null);
-            }
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
+    }
 
-            if (filters?.status) query = query.eq('status', filters.status);
-            if (filters?.search) {
-                query = query.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
-            }
-
-            const { data, error } = await query;
-            if (error) {
-                // pair_id column may not exist yet — fall back without it
-                const fallbackQuery = supabase
-                    .from('case_studies')
-                    .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
-                    .order('created_at', { ascending: false });
-                if (filters?.deleted) fallbackQuery.not('deleted_at', 'is', null);
-                else fallbackQuery.is('deleted_at', null);
-                if (filters?.status) fallbackQuery.eq('status', filters.status);
-                if (filters?.search) fallbackQuery.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
-                const { data: fbData, error: fbError } = await fallbackQuery;
-                if (fbError) throw fbError;
-                return (fbData ?? []).map((cs: any) => ({ ...cs, pair_id: null }));
-            }
-            return data ?? [];
-        },
-        cacheKey,
-        { tags: ['case-studies'], revalidate: 60 }
-    );
-
-    return fetchCaseStudies();
+    const { data, error } = await query;
+    if (error) {
+        // pair_id column may not exist yet — fall back without it
+        const fallbackQuery = supabase
+            .from('case_studies')
+            .select('id, title, slug, category, client_name, industry, status, featured, is_english, created_at, created_by, deleted_at')
+            .order('created_at', { ascending: false });
+        if (filters?.deleted) fallbackQuery.not('deleted_at', 'is', null);
+        else fallbackQuery.is('deleted_at', null);
+        if (filters?.status) fallbackQuery.eq('status', filters.status);
+        if (filters?.search) fallbackQuery.or(`title.ilike.%${filters.search}%,client_name.ilike.%${filters.search}%`);
+        const { data: fbData, error: fbError } = await fallbackQuery;
+        if (fbError) throw fbError;
+        return (fbData ?? []).map((cs: any) => ({ ...cs, pair_id: null }));
+    }
+    return data ?? [];
 }
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -549,22 +539,16 @@ export async function getCaseStudy(id: string): Promise<Database['public']['Tabl
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchCaseStudy = unstable_cache(
-        async () => {
-            const { data, error } = await supabase
-                .from('case_studies')
-                .select('*')
-                .eq('id', id)
-                .single();
+    // Not cached: see the note in getCaseStudies — the cookie-backed Supabase
+    // client cannot run inside unstable_cache in Next 16.
+    const { data, error } = await supabase
+        .from('case_studies')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-            if (error) throw error;
-            if (!data) throw new Error('Case study not found');
+    if (error) throw error;
+    if (!data) throw new Error('Case study not found');
 
-            return data;
-        },
-        [`case-study-${id}`],
-        { tags: [`case-study-${id}`, 'case-studies'], revalidate: 300 }
-    );
-
-    return fetchCaseStudy() as Promise<Database['public']['Tables']['case_studies']['Row']>;
+    return data as Database['public']['Tables']['case_studies']['Row'];
 }

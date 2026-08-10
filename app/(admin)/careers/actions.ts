@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { promises as fs } from 'fs';
@@ -216,35 +216,21 @@ export async function getJobs(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const cacheKey = [
-        'jobs-list',
-        filters?.department ?? 'all',
-        filters?.location ?? 'all',
-        filters?.employment_type ?? 'all',
-        filters?.is_active !== undefined ? String(filters.is_active) : 'all',
-    ];
+    // Not cached: cookie-backed Supabase client can't run inside unstable_cache
+    // in Next 16 (throws on cache miss after a save). Admin reads stay fresh.
+    let query = supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    const fetchJobs = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('jobs')
-                .select('*')
-                .order('created_at', { ascending: false });
+    if (filters?.department) query = query.eq('department', filters.department);
+    if (filters?.location) query = query.eq('location', filters.location);
+    if (filters?.employment_type) query = query.eq('employment_type', filters.employment_type);
+    if (filters?.is_active !== undefined) query = query.eq('is_active', filters.is_active);
 
-            if (filters?.department) query = query.eq('department', filters.department);
-            if (filters?.location) query = query.eq('location', filters.location);
-            if (filters?.employment_type) query = query.eq('employment_type', filters.employment_type);
-            if (filters?.is_active !== undefined) query = query.eq('is_active', filters.is_active);
-
-            const { data, error } = await query;
-            if (error) throw error;
-            return (data || []) as Job[];
-        },
-        cacheKey,
-        { tags: ['jobs'], revalidate: 300 }
-    );
-
-    return fetchJobs();
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as Job[];
 }
 
 export async function getJob(id: string): Promise<Job> {
@@ -255,22 +241,15 @@ export async function getJob(id: string): Promise<Job> {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchJob = unstable_cache(
-        async () => {
-            const { data, error } = await supabase
-                .from('jobs')
-                .select('*')
-                .eq('id', id)
-                .single();
+    // Not cached: see getJobs.
+    const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-            if (error || !data) throw new Error('Job not found');
-            return data as Job;
-        },
-        [`job-${id}`],
-        { tags: [`job-${id}`, 'jobs'], revalidate: 300 }
-    );
-
-    return fetchJob();
+    if (error || !data) throw new Error('Job not found');
+    return data as Job;
 }
 
 export async function createJob(jobData: CreateJobData): Promise<Job> {
@@ -487,31 +466,18 @@ export async function getJobApplications(filters?: {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const cacheKey = [
-        'job-applications-list',
-        filters?.status ?? 'all',
-        filters?.jobId ?? 'all',
-    ];
+    // Not cached: see getJobs.
+    let query = supabase
+        .from('job_applications')
+        .select('*, jobs(id, title, department, location)')
+        .order('created_at', { ascending: false });
 
-    const fetchApplications = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('job_applications')
-                .select('*, jobs(id, title, department, location)')
-                .order('created_at', { ascending: false });
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.jobId) query = query.eq('job_id', filters.jobId);
 
-            if (filters?.status) query = query.eq('status', filters.status);
-            if (filters?.jobId) query = query.eq('job_id', filters.jobId);
-
-            const { data, error } = await query;
-            if (error) throw error;
-            return (data || []) as JobApplication[];
-        },
-        cacheKey,
-        { tags: ['job-applications'], revalidate: 60 }
-    );
-
-    return fetchApplications();
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as JobApplication[];
 }
 
 export async function updateJobApplicationStatus(

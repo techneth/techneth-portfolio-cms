@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, canPerformAction } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import path from 'path';
@@ -14,28 +14,20 @@ export async function getContacts(filters?: { status?: string }) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const cacheKey = ['contacts-list', filters?.status ?? 'all'];
+    // Not cached: cookie-backed Supabase client can't run inside unstable_cache
+    // in Next 16 (throws on cache miss after a save). Admin reads stay fresh.
+    let query = supabase
+        .from('contact_submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    const fetchContacts = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('contact_submissions')
-                .select('*')
-                .order('created_at', { ascending: false });
+    if (filters?.status) {
+        query = query.eq('status', filters.status);
+    }
 
-            if (filters?.status) {
-                query = query.eq('status', filters.status);
-            }
-
-            const { data, error } = await query;
-            if (error) throw error;
-            return data;
-        },
-        cacheKey,
-        { tags: ['contacts'], revalidate: 60 }
-    );
-
-    return fetchContacts();
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
 }
 
 export async function getContact(id: string) {
@@ -44,22 +36,15 @@ export async function getContact(id: string) {
 
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchContact = unstable_cache(
-        async () => {
-            const { data, error } = await supabase
-                .from('contact_submissions')
-                .select('*')
-                .eq('id', id)
-                .single();
+    // Not cached: see getContacts.
+    const { data, error } = await supabase
+        .from('contact_submissions')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-            if (error) throw error;
-            return data;
-        },
-        [`contact-${id}`],
-        { tags: [`contact-${id}`, 'contacts'], revalidate: 120 }
-    );
-
-    return fetchContact();
+    if (error) throw error;
+    return data;
 }
 
 export async function updateContactStatus(
