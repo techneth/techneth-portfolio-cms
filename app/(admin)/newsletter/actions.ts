@@ -16,7 +16,7 @@ import {
     NewsletterConfig,
     DEFAULT_NEWSLETTER_CONFIG,
 } from '@/lib/newsletter/resend';
-import { revalidatePath, updateTag, unstable_cache } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
@@ -66,26 +66,20 @@ export async function getSubscribers(filters?: { status?: string }): Promise<Sub
     await requireNewsletterAccess('read');
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchSubscribers = unstable_cache(
-        async () => {
-            let query = supabase
-                .from('newsletter_subscribers')
-                .select('id, email, name, status, source, subscribed_at, unsubscribed_at, created_at')
-                .order('created_at', { ascending: false });
+    // Not cached: cookie-backed Supabase client can't run inside unstable_cache
+    // in Next 16 (throws on cache miss after a save). Admin reads stay fresh.
+    let query = supabase
+        .from('newsletter_subscribers')
+        .select('id, email, name, status, source, subscribed_at, unsubscribed_at, created_at')
+        .order('created_at', { ascending: false });
 
-            if (filters?.status) {
-                query = query.eq('status', filters.status);
-            }
+    if (filters?.status) {
+        query = query.eq('status', filters.status);
+    }
 
-            const { data, error } = await query;
-            if (error) throw error;
-            return data as Subscriber[];
-        },
-        ['newsletter-subscribers-list', filters?.status ?? 'all'],
-        { tags: ['newsletter-subscribers'], revalidate: 60 }
-    );
-
-    return fetchSubscribers();
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as Subscriber[];
 }
 
 const addSubscriberSchema = z.object({
@@ -255,21 +249,14 @@ export async function getCampaigns(): Promise<Campaign[]> {
     await requireNewsletterAccess('read');
     const supabase = (await createServerClient()) as SupabaseClient<any>;
 
-    const fetchCampaigns = unstable_cache(
-        async () => {
-            const { data, error } = await supabase
-                .from('newsletter_campaigns')
-                .select('*')
-                .order('created_at', { ascending: false });
+    // Not cached: see getSubscribers.
+    const { data, error } = await supabase
+        .from('newsletter_campaigns')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            return data as Campaign[];
-        },
-        ['newsletter-campaigns-list'],
-        { tags: ['newsletter-campaigns'], revalidate: 30 }
-    );
-
-    return fetchCampaigns();
+    if (error) throw error;
+    return data as Campaign[];
 }
 
 export async function getCampaign(id: string): Promise<Campaign> {
