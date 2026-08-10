@@ -227,13 +227,18 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
             );
 
             const categoryToSave = formData.is_english ? selectedEnCategory : getNlCategory(selectedEnCategory);
-            await updateCaseStudy(caseStudyId, {
+            const result = await updateCaseStudy(caseStudyId, {
                 ...formData,
                 category: categoryToSave,
                 content: processedContent,
                 featured_image: imageUrl,
                 status
             });
+
+            if (result && 'error' in result && result.error) {
+                toast.error(result.error, { id: toastId });
+                return;
+            }
 
             toast.success('Case study updated successfully!', { id: toastId });
             clearFormDraft(draftKey);

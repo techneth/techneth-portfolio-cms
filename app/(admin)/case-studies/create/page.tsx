@@ -220,13 +220,18 @@ export default function CreateCaseStudyPage() {
             );
 
             const categoryToSave = formData.is_english ? selectedEnCategory : getNlCategory(selectedEnCategory);
-            await createCaseStudy({
+            const result = await createCaseStudy({
                 ...formData,
                 category: categoryToSave,
                 content: processedContent,
                 featured_image: imageUrl,
                 status
             });
+
+            if (result && 'error' in result && result.error) {
+                toast.error(result.error, { id: toastId });
+                return;
+            }
 
             toast.success('Case study created successfully!', { id: toastId });
             clearQueue();

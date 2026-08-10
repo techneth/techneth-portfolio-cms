@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Edit, Trash2, Search, AlertTriangle, RotateCcw, Trash, Star, Globe, Link2, Unlink2, X } from 'lucide-react';
 import { getBlogs, deleteBlog, restoreBlog, permanentlyDeleteBlog, toggleFeaturedBlog, linkBlogPair, unlinkBlogPair } from './actions';
-import { format } from 'date-fns';
+import { formatDateSafe } from '@/lib/format-date';
 import { toast } from 'react-hot-toast';
 import Modal from '@/components/admin/Modal';
 import { createClient } from '@/lib/supabase/client';
@@ -168,7 +168,7 @@ function BlogCard({ blog, partner, viewFilter, onDelete, onPermanentDelete, onRe
                 <span>{blog.author_name || 'Unknown'}</span>
                 {blog.category && <><span>·</span><span>{blog.category}</span></>}
                 <span>·</span>
-                <span>{format(new Date(blog.created_at), 'MMM d, yyyy')}</span>
+                <span>{formatDateSafe(blog.created_at)}</span>
             </div>
 
             <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
