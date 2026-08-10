@@ -190,7 +190,7 @@ export default function CreateCaseStudyPairPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} options={CASE_STUDY_CATEGORIES} single />
+                        <CategorySelect value={sharedCategory} onChange={setSharedCategory} options={CASE_STUDY_CATEGORIES} />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>

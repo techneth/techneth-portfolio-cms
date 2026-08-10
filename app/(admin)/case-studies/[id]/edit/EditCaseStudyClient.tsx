@@ -333,7 +333,6 @@ export default function EditCaseStudyClient({ id, initialData }: { id: string, i
                                 value={selectedEnCategory}
                                 onChange={setSelectedEnCategory}
                                 options={CASE_STUDY_CATEGORIES}
-                                single
                                 required
                             />
                         </div>

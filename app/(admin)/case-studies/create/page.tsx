@@ -299,7 +299,6 @@ export default function CreateCaseStudyPage() {
                                 value={selectedEnCategory}
                                 onChange={setSelectedEnCategory}
                                 options={CASE_STUDY_CATEGORIES}
-                                single
                                 required
                             />
                         </div>
