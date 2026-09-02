@@ -86,8 +86,19 @@ export async function POST(request: Request) {
 
     const verified = verifySignature(raw, timestamp, signature, secret);
     if (!verified.ok) {
-        console.warn(`[neth-blog] rejected delivery ${deliveryId || '(none)'}: ${verified.reason}`);
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        console.warn(
+            `[neth-blog] rejected delivery ${deliveryId || '(none)'}: ${verified.reason}` +
+            ` (event=${event || 'none'}, ts=${timestamp || 'none'}, bytes=${raw.length})`
+        );
+        // The specific reason goes back in the body so their dashboard shows
+        // something actionable. It leaks nothing: whether a clock is skewed or a
+        // digest mismatched tells an attacker nothing they don't already know,
+        // and it is the difference between "rotate the secret" and "fix the
+        // clock" when this fails at 2am.
+        return NextResponse.json(
+            { error: 'Invalid signature', reason: verified.reason },
+            { status: 401 }
+        );
     }
 
     let body: unknown;
