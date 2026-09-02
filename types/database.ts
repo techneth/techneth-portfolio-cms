@@ -63,6 +63,8 @@ export interface Database {
                     published_at: string | null
                     is_english: boolean | null
                     pair_id: string | null
+                    external_id: string | null
+                    external_source: string | null
                     created_at: string
                     updated_at: string
                     created_by: string | null
@@ -87,6 +89,8 @@ export interface Database {
                     published_at?: string | null
                     is_english?: boolean | null
                     pair_id?: string | null
+                    external_id?: string | null
+                    external_source?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
@@ -110,10 +114,50 @@ export interface Database {
                     published_at?: string | null
                     is_english?: boolean | null
                     pair_id?: string | null
+                    external_id?: string | null
+                    external_source?: string | null
                     created_at?: string
                     updated_at?: string
                     created_by?: string | null
                     updated_by?: string | null
+                }
+            }
+            neth_webhook_deliveries: {
+                Row: {
+                    id: string
+                    delivery_id: string
+                    event: string | null
+                    external_id: string | null
+                    blog_id: string | null
+                    slug: string | null
+                    status: 'processed' | 'skipped' | 'failed'
+                    error: string | null
+                    payload: Json | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    delivery_id: string
+                    event?: string | null
+                    external_id?: string | null
+                    blog_id?: string | null
+                    slug?: string | null
+                    status?: 'processed' | 'skipped' | 'failed'
+                    error?: string | null
+                    payload?: Json | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    delivery_id?: string
+                    event?: string | null
+                    external_id?: string | null
+                    blog_id?: string | null
+                    slug?: string | null
+                    status?: 'processed' | 'skipped' | 'failed'
+                    error?: string | null
+                    payload?: Json | null
+                    created_at?: string
                 }
             }
             case_studies: {
