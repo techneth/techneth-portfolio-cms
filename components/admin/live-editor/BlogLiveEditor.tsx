@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GripVertical, Trash2, ExternalLink, FileCode2, Undo2, Plus } from 'lucide-react';
+import { GripVertical, Trash2, ExternalLink, FileCode2, Undo2, Plus, Type } from 'lucide-react';
 import { Block, Row, MoveTarget, makeBlock, makeRow, makeCol, uid, BlockType } from './types';
 import { parseHtmlToRows, assembleRowsToHtml } from './htmlRoundTrip';
 import { SECTION_TEMPLATES } from './templates';
 import { BlockRenderer } from './blocks';
+import { markdownToHtml, htmlToMarkdown } from './markdown';
 import { DropZone, DropPayload, readDropPayload, hasEditorDragData, DND_EXISTING_BLOCK, DND_BLOCK_TYPE } from './DropZones';
 import BlockSidebar from './BlockSidebar';
 import PropertiesPanel from './PropertiesPanel';
@@ -40,8 +41,9 @@ export default function BlogLiveEditor({
     const [dragActive, setDragActive] = useState(false);
     // Open "+ add above/below" picker: which block and which side
     const [insertMenu, setInsertMenu] = useState<{ blockId: string; pos: 'before' | 'after' } | null>(null);
-    const [htmlMode, setHtmlMode] = useState(false);
-    const [htmlDraft, setHtmlDraft] = useState('');
+    // 'blocks' = drag & drop canvas, 'html' = raw markup, 'markdown' = plain text
+    const [mode, setMode] = useState<'blocks' | 'html' | 'markdown'>('blocks');
+    const [sourceDraft, setSourceDraft] = useState('');
     const [liveBroadcast, setLiveBroadcast] = useState(false);
 
     const historyRef = useRef<Row[][]>([]);
@@ -53,6 +55,8 @@ export default function BlogLiveEditor({
     const onImageSelectRef = useRef(onImageSelect);
     onImageSelectRef.current = onImageSelect;
     const previewChannelRef = useRef<BroadcastChannel | null>(null);
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const canvasFocusedRef = useRef(false);
 
     // ── Load / external sync ────────────────────────────────────────────────
     useEffect(() => { setMounted(true); }, []);
@@ -114,6 +118,32 @@ export default function BlogLiveEditor({
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, [undo]);
+
+    // Paste markdown (or plain text) straight onto the canvas: with no field
+    // focused, the clipboard text is parsed as markdown and appended as blocks.
+    useEffect(() => {
+        if (mode !== 'blocks') return;
+        const onPointerDown = (e: MouseEvent) => {
+            canvasFocusedRef.current = !!rootRef.current?.contains(e.target as Node);
+        };
+        const onPaste = (e: ClipboardEvent) => {
+            if (!canvasFocusedRef.current) return; // last click was outside the editor
+            const el = document.activeElement as HTMLElement | null;
+            if (el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+            const text = e.clipboardData?.getData('text/plain')?.trim();
+            if (!text) return;
+            e.preventDefault();
+            const parsed = parseHtmlToRows(sanitizeHtmlClient(markdownToHtml(text)));
+            if (!parsed.length) return;
+            mutate((draft) => { draft.push(...parsed); return draft; });
+        };
+        document.addEventListener('mousedown', onPointerDown, true);
+        document.addEventListener('paste', onPaste);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown, true);
+            document.removeEventListener('paste', onPaste);
+        };
+    }, [mode, mutate]);
 
     // ── Tree helpers ─────────────────────────────────────────────────────────
     const removeBlock = (draft: Row[], blockId: string): Block | null => {
@@ -305,14 +335,19 @@ export default function BlogLiveEditor({
 
     useEffect(() => () => previewChannelRef.current?.close(), []);
 
-    // ── HTML source mode ─────────────────────────────────────────────────────
-    const enterHtmlMode = () => {
-        setHtmlDraft(assembleRowsToHtml(rowsRef.current));
-        setHtmlMode(true);
+    // ── Source modes (raw HTML / plain markdown) ─────────────────────────────
+    // Both edit the whole document as text and parse back into blocks on apply.
+    const toggleSourceMode = (target: 'html' | 'markdown') => {
+        if (mode === target) { applySourceMode(); return; }
+        const html = assembleRowsToHtml(rowsRef.current);
+        setSourceDraft(target === 'markdown' ? htmlToMarkdown(html) : html);
+        setMode(target);
     };
-    const applyHtmlMode = () => {
-        mutate(() => parseHtmlToRows(sanitizeHtmlClient(htmlDraft)));
-        setHtmlMode(false);
+
+    const applySourceMode = () => {
+        const html = mode === 'markdown' ? markdownToHtml(sourceDraft) : sourceDraft;
+        mutate(() => parseHtmlToRows(sanitizeHtmlClient(html)));
+        setMode('blocks');
     };
 
     if (!mounted) {
@@ -359,18 +394,27 @@ export default function BlogLiveEditor({
     );
 
     return (
-        <div className="bg-white rounded-lg overflow-hidden border">
+        <div ref={rootRef} className="bg-white rounded-lg overflow-hidden border">
             {/* Topbar */}
             <div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50 flex-wrap gap-y-1">
                 <div className="flex items-center gap-1">
                     <button
                         type="button"
-                        onClick={() => (htmlMode ? applyHtmlMode() : enterHtmlMode())}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${htmlMode ? 'bg-[#00A99D] text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-                        title={htmlMode ? 'Apply the HTML and return to blocks' : 'Edit the whole document as HTML'}
+                        onClick={() => toggleSourceMode('markdown')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${mode === 'markdown' ? 'bg-[#00A99D] text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+                        title={mode === 'markdown' ? 'Apply the markdown and return to blocks' : 'Write or paste plain markdown instead of dragging blocks'}
+                    >
+                        <Type size={15} />
+                        <span>{mode === 'markdown' ? 'Apply Markdown' : 'Markdown'}</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => toggleSourceMode('html')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${mode === 'html' ? 'bg-[#00A99D] text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+                        title={mode === 'html' ? 'Apply the HTML and return to blocks' : 'Edit the whole document as HTML'}
                     >
                         <FileCode2 size={15} />
-                        <span>{htmlMode ? 'Apply HTML' : 'HTML'}</span>
+                        <span>{mode === 'html' ? 'Apply HTML' : 'HTML'}</span>
                     </button>
                     <button
                         type="button"
@@ -393,18 +437,33 @@ export default function BlogLiveEditor({
                 </button>
             </div>
 
-            {htmlMode ? (
+            {mode !== 'blocks' ? (
                 <div>
                     <textarea
-                        value={htmlDraft}
-                        onChange={(e) => setHtmlDraft(e.target.value)}
-                        spellCheck={false}
+                        value={sourceDraft}
+                        onChange={(e) => setSourceDraft(e.target.value)}
+                        spellCheck={mode === 'markdown'}
+                        autoFocus
+                        placeholder={mode === 'markdown'
+                            ? '# Your heading\n\nWrite or paste plain markdown here.\n\n- bullet\n- bullet\n\n**bold**, *italic*, [link](https://example.com), ![alt](image-url)'
+                            : ''}
                         className="w-full h-[30rem] p-4 font-mono text-sm text-gray-800 focus:outline-none resize-y"
                     />
                     <div className="px-3 py-2 border-t bg-amber-50 text-xs text-amber-800">
-                        Click “Apply HTML” to load this markup back into the block editor.
-                        Markup the blocks don’t model (custom divs, styles, scripts) is kept
-                        verbatim as HTML blocks.
+                        {mode === 'markdown' ? (
+                            <>
+                                Write or paste plain markdown — headings, lists, quotes, tables, links,
+                                images, code fences and raw HTML all work. Click “Apply Markdown” to turn
+                                it into editable blocks. Anything markdown can’t express (multi-column
+                                rows, buttons) is kept as HTML.
+                            </>
+                        ) : (
+                            <>
+                                Click “Apply HTML” to load this markup back into the block editor.
+                                Markup the blocks don’t model (custom divs, styles, scripts) is kept
+                                verbatim as HTML blocks.
+                            </>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -439,6 +498,8 @@ export default function BlogLiveEditor({
                         {rows.length === 0 && (
                             <div className="border-2 border-dashed border-gray-200 rounded-xl py-16 text-center text-gray-400 text-sm">
                                 Drag blocks from the left, or click one to add it.
+                                <br />
+                                You can also paste markdown here, or click “Markdown” above to write it as plain text.
                             </div>
                         )}
                         {rows.map((row, rowIdx) => (
