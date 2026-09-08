@@ -7,6 +7,7 @@ import { parseHtmlToRows, assembleRowsToHtml } from './htmlRoundTrip';
 import { SECTION_TEMPLATES } from './templates';
 import { BlockRenderer } from './blocks';
 import { markdownToHtml, htmlToMarkdown } from './markdown';
+import MarkdownPane from './MarkdownPane';
 import { DropZone, DropPayload, readDropPayload, hasEditorDragData, DND_EXISTING_BLOCK, DND_BLOCK_TYPE } from './DropZones';
 import BlockSidebar from './BlockSidebar';
 import PropertiesPanel from './PropertiesPanel';
@@ -437,33 +438,32 @@ export default function BlogLiveEditor({
                 </button>
             </div>
 
-            {mode !== 'blocks' ? (
+            {mode === 'markdown' ? (
+                <div>
+                    <MarkdownPane
+                        value={sourceDraft}
+                        onChange={setSourceDraft}
+                        onImageFile={(file) => (onImageSelectRef.current ? onImageSelectRef.current(file) : URL.createObjectURL(file))}
+                    />
+                    <div className="px-3 py-2 border-t bg-amber-50 text-xs text-amber-800">
+                        Headings, lists, quotes, tables, links, images, code fences and raw HTML all
+                        work. Click “Apply Markdown” to turn this into editable blocks. Anything
+                        markdown can’t express (multi-column rows, buttons) is kept as HTML.
+                    </div>
+                </div>
+            ) : mode === 'html' ? (
                 <div>
                     <textarea
                         value={sourceDraft}
                         onChange={(e) => setSourceDraft(e.target.value)}
-                        spellCheck={mode === 'markdown'}
+                        spellCheck={false}
                         autoFocus
-                        placeholder={mode === 'markdown'
-                            ? '# Your heading\n\nWrite or paste plain markdown here.\n\n- bullet\n- bullet\n\n**bold**, *italic*, [link](https://example.com), ![alt](image-url)'
-                            : ''}
                         className="w-full h-[30rem] p-4 font-mono text-sm text-gray-800 focus:outline-none resize-y"
                     />
                     <div className="px-3 py-2 border-t bg-amber-50 text-xs text-amber-800">
-                        {mode === 'markdown' ? (
-                            <>
-                                Write or paste plain markdown — headings, lists, quotes, tables, links,
-                                images, code fences and raw HTML all work. Click “Apply Markdown” to turn
-                                it into editable blocks. Anything markdown can’t express (multi-column
-                                rows, buttons) is kept as HTML.
-                            </>
-                        ) : (
-                            <>
-                                Click “Apply HTML” to load this markup back into the block editor.
-                                Markup the blocks don’t model (custom divs, styles, scripts) is kept
-                                verbatim as HTML blocks.
-                            </>
-                        )}
+                        Click “Apply HTML” to load this markup back into the block editor.
+                        Markup the blocks don’t model (custom divs, styles, scripts) is kept
+                        verbatim as HTML blocks.
                     </div>
                 </div>
             ) : (

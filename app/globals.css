@@ -305,6 +305,79 @@ article blockquote p,
 /* Rendered HTML blocks keep their own look; just contain floats/margins */
 .tn-canvas .tn-html-render { overflow: hidden; }
 
+/* ── Markdown mode live preview ──
+   Same typography as the canvas, with the looser spacing of a finished
+   document plus the code/table styling markdown can produce. */
+.tn-md-preview {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: #1f2937;
+}
+
+.tn-md-preview h1, .tn-md-preview h2, .tn-md-preview h3,
+.tn-md-preview h4, .tn-md-preview h5, .tn-md-preview h6 {
+  color: #0f245b;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.tn-md-preview h1 { font-size: 1.875rem; }
+.tn-md-preview h2 { font-size: 1.5rem; }
+.tn-md-preview h3 { font-size: 1.25rem; }
+.tn-md-preview h4 { font-size: 1.125rem; }
+.tn-md-preview > :first-child { margin-top: 0; }
+
+.tn-md-preview p { margin: 0.75rem 0; }
+.tn-md-preview a { color: #009487; text-decoration: underline; }
+.tn-md-preview img { max-width: 100%; border-radius: 0.5rem; }
+.tn-md-preview hr { border-top: 1px solid #e5e7eb; margin: 1.25rem 0; }
+
+.tn-md-preview ul { list-style: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
+.tn-md-preview ol { list-style: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
+.tn-md-preview li { margin-bottom: 0.25rem; }
+
+.tn-md-preview blockquote {
+  background: #f9f9f9;
+  border-left: 4px solid #009487;
+  padding: 0.75rem 1rem;
+  color: #4b5563;
+  font-style: italic;
+  border-radius: 0 6px 6px 0;
+  margin: 0.75rem 0;
+}
+
+.tn-md-preview code {
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.875em;
+  color: #0f245b;
+}
+
+.tn-md-preview pre {
+  background: #0f245b;
+  color: #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.tn-md-preview pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.tn-md-preview table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
+.tn-md-preview th, .tn-md-preview td {
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.tn-md-preview th { background: rgba(0, 148, 135, 0.1); font-weight: 600; }
+
 /* HTML section blocks inside the Quill editor (raw HTML, click to edit) */
 .ql-editor .ql-html-section {
   position: relative;
