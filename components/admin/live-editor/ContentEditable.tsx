@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface Props {
     html: string;
@@ -17,23 +17,33 @@ interface Props {
  * updates (undo, block moves) sync in only when the element is not focused.
  * Commits on input (debounced) and on blur.
  *
- * IMPORTANT: dangerouslySetInnerHTML is seeded ONCE with the mount-time html.
- * If it tracked the `html` prop, every commit would round-trip through the
- * parent and React would rewrite innerHTML mid-typing, collapsing the caret to
- * the start of the block. All later syncing goes through the effect below,
- * which refuses to touch a focused element.
+ * IMPORTANT: this element deliberately has NO children and NO
+ * dangerouslySetInnerHTML. React compares dangerouslySetInnerHTML by object
+ * identity, not by the __html string — a fresh `{ __html }` literal each render
+ * makes React rewrite innerHTML on every single commit. That wipes whatever the
+ * user has typed since mount (and, when the string does change, collapses the
+ * caret to the start). Seeding the DOM ourselves in the effect below keeps
+ * React out of it entirely; all syncing happens here, and never while focused.
  */
 export default function ContentEditable({ html, onChange, className, placeholder, tagName = 'div', style }: Props) {
     const ref = useRef<HTMLElement | null>(null);
-    // Frozen at mount: safe to read during render, and never re-seeds the DOM
-    const [initialHtml] = useState(html);
     const lastEmitted = useRef(html);
     const pendingExternal = useRef<string | null>(null);
+    const seeded = useRef(false);
     const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
+
+        // First run: put the initial markup in place ourselves.
+        if (!seeded.current) {
+            seeded.current = true;
+            if (el.innerHTML !== html) el.innerHTML = html;
+            lastEmitted.current = html;
+            return;
+        }
+
         if (html === lastEmitted.current) return; // our own change coming back
         if (document.activeElement === el) {
             // Never fight the caret — replay the update once the user leaves
@@ -93,6 +103,5 @@ export default function ContentEditable({ html, onChange, className, placeholder
         onInput: handleInput,
         onBlur: handleBlur,
         onPaste: handlePaste,
-        dangerouslySetInnerHTML: { __html: initialHtml },
     });
 }
