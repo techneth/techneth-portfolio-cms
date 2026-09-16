@@ -10,6 +10,7 @@ import { getBlog, updateBlog, deleteBlog, BlogFormData } from '../../actions';
 import { uploadImageDirect } from '@/lib/supabase/storage';
 import CategorySelect from '@/components/admin/CategorySelect';
 import { getNlCategory, getEnCategory } from '@/lib/categories';
+import { mergeKeywords } from '@/lib/keywords';
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useImageUploadQueue } from '@/hooks/useImageUploadQueue';
@@ -121,14 +122,16 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
         });
     };
 
-    const addKeyword = () => {
-        if (keywordInput.trim() && !formData.seo_keywords.includes(keywordInput.trim())) {
-            setFormData({
-                ...formData,
-                seo_keywords: [...formData.seo_keywords, keywordInput.trim()],
-            });
-            setKeywordInput('');
+    /**
+     * Accepts a single keyword or a whole comma-separated line — pasting
+     * "seo, next.js, cms" adds three keywords rather than one long one.
+     */
+    const addKeyword = (raw: string = keywordInput) => {
+        const next = mergeKeywords(formData.seo_keywords, raw);
+        if (next !== formData.seo_keywords) {
+            setFormData(prev => ({ ...prev, seo_keywords: next }));
         }
+        setKeywordInput('');
     };
 
     const removeKeyword = (keyword: string) => {
@@ -502,14 +505,27 @@ export default function EditBlogClient({ id, initialData }: { id: string, initia
                                 <input
                                     type="text"
                                     value={keywordInput}
-                                    onChange={(e) => setKeywordInput(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
+                                    onChange={(e) => {
+                                        // Typing a comma finishes the keyword
+                                        if (/[,;|\t]/.test(e.target.value)) addKeyword(e.target.value);
+                                        else setKeywordInput(e.target.value);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') { e.preventDefault(); addKeyword(); }
+                                    }}
+                                    onPaste={(e) => {
+                                        const text = e.clipboardData.getData('text');
+                                        if (!/[,;\n\r\t|]/.test(text)) return; // single keyword: paste normally
+                                        e.preventDefault();
+                                        addKeyword(keywordInput + text);
+                                    }}
+                                    onBlur={() => addKeyword()} // don't lose a typed-but-unconfirmed keyword
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#00A99D]"
-                                    placeholder="Add a keyword and press Enter"
+                                    placeholder="Add a keyword, or paste a comma-separated list"
                                 />
                                 <button
                                     type="button"
-                                    onClick={addKeyword}
+                                    onClick={() => addKeyword()}
                                     className="px-4 py-2 bg-[#00A99D] text-white rounded hover:bg-[#008F84] transition-colors"
                                 >
                                     Add
