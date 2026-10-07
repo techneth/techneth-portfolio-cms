@@ -21,10 +21,10 @@ where external_source = 'babylovegrowth' order by created_at desc;
    then **redeploy** — env changes only apply to a new deployment.
 3. **Check it:** open `https://www.admin.techneth.com/api/babylovegrowth-webhook`
    in a browser → `"token_configured": true`.
-4. **Paste into Babylovegrowth's "Webhook URL" field:**
-   ```
-   https://www.admin.techneth.com/api/babylovegrowth-webhook?token=<your token>
-   ```
+4. **In Babylovegrowth's dashboard:**
+   - **Webhook URL:** `https://www.admin.techneth.com/api/babylovegrowth-webhook`
+   - **Secret token:** the same token as `BABYLOVEGROWTH_WEBHOOK_TOKEN`
+
    Use the `www.` host — the bare domain 308-redirects, and not every webhook
    sender follows redirects.
 
@@ -35,13 +35,14 @@ where external_source = 'babylovegrowth' order by created_at desc;
 | `BABYLOVEGROWTH_BLOG_AUTHOR` | no | `Techneth` | Byline for imported posts. |
 | `BABYLOVEGROWTH_BLOG_CATEGORY` | no | *(none)* | A label from `lib/categories.ts`. |
 
-## Why a token in the URL
+## Authentication
 
-Babylovegrowth doesn't sign its requests, so without a secret anyone who found
-the endpoint could post articles into the CMS. Their form accepts any URL, so
-the secret travels as `?token=`, compared in constant time; missing or wrong
-gets 401. Because it's in the URL it can appear in request logs — treat it like
-a password and rotate it (steps 1–4) if it leaks.
+Babylovegrowth sends the dashboard's "Secret token" as
+`Authorization: Bearer <token>` on every request. The receiver compares it to
+`BABYLOVEGROWTH_WEBHOOK_TOKEN` in constant time; missing or wrong gets 401.
+Only the header is accepted — a token in the URL is ignored. Treat the token
+like a password: anyone holding it can post articles into the CMS. To rotate,
+generate a new one and update it in both Vercel (then redeploy) and their dashboard.
 
 ## Responses, and why failures return 500
 
@@ -50,7 +51,7 @@ The article is imported **before** responding:
 | Response | When | Babylovegrowth will… |
 | --- | --- | --- |
 | 200 | Imported, or nothing to do (repeat, edited, trashed, test ping) | stop |
-| 401 | Missing / wrong token | — fix the URL |
+| 401 | Missing / wrong Bearer token | — fix the secret token |
 | 400 | Body isn't JSON | — |
 | 500 | Database error, or token not configured | retry |
 

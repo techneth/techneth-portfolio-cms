@@ -9,10 +9,9 @@ export const dynamic = 'force-dynamic';
 /**
  * Inbound webhook: Babylovegrowth POSTs each article as JSON when it's generated.
  *
- * Their contract is only: HTTPS POST, JSON body, return 200 within 5 seconds
- * (slower may be retried). They don't sign requests, so the URL itself carries
- * a secret — configure theirs as
- *     https://<this deployment>/api/babylovegrowth-webhook?token=<BABYLOVEGROWTH_WEBHOOK_TOKEN>
+ * Their contract: HTTPS POST, JSON body, return 200 within 5 seconds (slower
+ * may be retried), authenticated with `Authorization: Bearer <secret>` — the
+ * "Secret token" in their dashboard, which must equal BABYLOVEGROWTH_WEBHOOK_TOKEN.
  *
  * The article is imported BEFORE answering, and only a successful import gets
  * a 200. A failure answers 500 so they retry — with nowhere else to keep the
@@ -21,14 +20,10 @@ export const dynamic = 'force-dynamic';
  * keyed on the article id.
  */
 
+/** `Authorization: Bearer <token>`, compared in constant time. */
 function tokenMatches(request: Request, secret: string): boolean {
-    const url = new URL(request.url);
-    // Query string is what their form supports; headers too, in case they add it
-    const provided =
-        url.searchParams.get('token') ||
-        request.headers.get('x-webhook-token') ||
-        request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-        '';
+    const provided = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    if (!provided) return false;
     const a = Buffer.from(provided);
     const b = Buffer.from(secret);
     return a.length === b.length && crypto.timingSafeEqual(a, b);
